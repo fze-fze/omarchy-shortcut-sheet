@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+"""Dump the focused window plus Hyprland bind records as JSON for the overlay."""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+def run(cmd: list[str]) -> str:
+    try:
+        return subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL)
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return ""
+
+
+def active_window() -> dict:
+    raw = run(["hyprctl", "activewindow", "-j"]).strip()
+    if not raw or raw.lower().startswith("invalid"):
+        return {}
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {
+        "class": str(data.get("class") or ""),
+        "initialClass": str(data.get("initialClass") or ""),
+        "title": str(data.get("title") or ""),
+        "address": str(data.get("address") or ""),
+        "tags": [str(tag) for tag in (data.get("tags") or [])],
+    }
+
+
+def cache_dir() -> Path:
+    return Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "omarchy"
+
+
+def newest_records() -> Path | None:
+    files = list(cache_dir().glob("keybindings-*.records"))
+    if not files:
+        return None
+    return max(files, key=lambda path: path.stat().st_mtime)
+
+
+def ensure_records() -> Path | None:
+    existing = newest_records()
+    if existing and existing.stat().st_size > 0:
+        return existing
+    run(["omarchy-menu-keybindings", "--print"])
+    return newest_records()
+
+
+def parse_records(path: Path) -> list[dict]:
+    binds: list[dict] = []
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return binds
+
+    for line in text.splitlines():
+        if not line.strip():
+            continue
+        fields = line.split("\t")
+        display = fields[0] if fields else ""
+        dispatcher = fields[1] if len(fields) > 1 else ""
+        arg = "\t".join(fields[2:]) if len(fields) > 2 else ""
+        if " → " not in display:
+            continue
+        keys, label = display.split(" → ", 1)
+        keys = " ".join(keys.split())
+        label = label.strip()
+        if not keys or not label:
+            continue
+        binds.append(
+            {
+                "keys": keys,
+                "label": label,
+                "dispatcher": dispatcher,
+                "arg": arg,
+            }
+        )
+    return binds
+
+
+def main() -> int:
+    records = ensure_records()
+    payload = {
+        "window": active_window(),
+        "binds": parse_records(records) if records else [],
+    }
+    json.dump(payload, sys.stdout, ensure_ascii=False)
+    sys.stdout.write("\n")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

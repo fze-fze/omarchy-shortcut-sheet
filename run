@@ -1,0 +1,39 @@
+#!/bin/bash
+# Dispatch a shortcut-sheet row after the overlay has released keyboard focus.
+
+set -euo pipefail
+
+dispatcher="${1-}"
+arg="${2-}"
+
+quote_lua_string() {
+  python3 -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$1"
+}
+
+case "$dispatcher" in
+  "" )
+    exit 0
+    ;;
+  exec)
+    [[ -z $arg ]] && exit 0
+    quoted=$(quote_lua_string "$arg")
+    if ! hyprctl dispatch "hl.dsp.exec_cmd($quoted)" >/dev/null 2>&1; then
+      hyprctl dispatch exec "$arg" >/dev/null
+    fi
+    ;;
+  lua)
+    [[ -z $arg ]] && exit 0
+    hyprctl dispatch "$arg" >/dev/null
+    ;;
+  sendshortcut)
+    [[ -z $arg ]] && exit 0
+    hyprctl dispatch sendshortcut "$arg" >/dev/null
+    ;;
+  *)
+    if [[ -n $arg ]]; then
+      hyprctl dispatch "$dispatcher" "$arg" >/dev/null
+    else
+      hyprctl dispatch "$dispatcher" >/dev/null
+    fi
+    ;;
+esac
