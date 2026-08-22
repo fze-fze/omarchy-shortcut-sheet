@@ -4,6 +4,8 @@ Shortcut Sheet is a context-aware keyboard shortcut overlay for Omarchy Quattro.
 Tap <kbd>Super</kbd> once to show the keyboard shortcuts available in the current
 app or web page, alongside window, launcher, and system shortcuts.
 
+![Shortcut Sheet preview](preview.png)
+
 The sheet reads your live Hyprland bindings, so desktop rows stay aligned with
 your configuration. It also includes curated shortcuts for terminals, browsers,
 Files, Typora, VS Code-compatible editors, Gmail, GitHub, YouTube, X, ChatGPT,
