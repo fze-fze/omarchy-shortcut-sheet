@@ -210,13 +210,14 @@ test("shows complete truncated shortcuts in a hover overlay", async () => {
   const source = await readFile(resolve(root, "Overlay.qml"), "utf8")
 
   assert.match(source, /readonly property bool labelTruncated:\s*shortcutLabel\.truncated/)
-  assert.match(source, /z:\s*rowRoot\.labelTruncated\s*&&\s*rowMouse\.containsMouse\s*\?\s*100\s*:\s*0/)
+  assert.match(source, /root\.showShortcutHover\(rowRoot,\s*rowRoot\.modelData,\s*rowRoot\.flatIndex\)/)
   assert.match(source, /id:\s*expandedShortcut/)
-  assert.match(source, /visible:\s*rowRoot\.labelTruncated\s*&&\s*rowMouse\.containsMouse\s*&&\s*!root\.settingsOpen/)
+  assert.match(source, /width:\s*Math\.max\(root\.shortcutHoverRowWidth,\s*preferredWidth\)/)
+  assert.match(source, /visible:\s*root\.shortcutHoverVisible\s*&&\s*!root\.settingsOpen/)
   assert.match(source, /color:\s*"#111111"/)
   assert.match(source, /border\.color:\s*"#4a4a4a"/)
-  assert.match(source, /wrapMode:\s*Text\.WrapAtWordBoundaryOrAnywhere/)
-  assert.match(source, /openUpwards:\s*rowRoot\.y\s*\+\s*height\s*>\s*itemList\.contentY\s*\+\s*itemList\.height/)
+  assert.match(source, /text:\s*root\.shortcutHoverLabel[\s\S]*?wrapMode:\s*Text\.NoWrap/)
+  assert.match(source, /maximumX:\s*card\.width\s*-\s*card\.contentRightInset\s*-\s*width/)
 })
 
 test("defaults to a stable compact three-column panel while filtering", async () => {

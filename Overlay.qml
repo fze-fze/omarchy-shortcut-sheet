@@ -23,6 +23,14 @@ Item {
   property bool keyboardNavigationActive: false
   property bool settingsOpen: false
   property bool settingsButtonActive: false
+  property bool shortcutHoverVisible: false
+  property int shortcutHoverIndex: -1
+  property real shortcutHoverX: 0
+  property real shortcutHoverY: 0
+  property real shortcutHoverRowWidth: 0
+  property string shortcutHoverKeys: ""
+  property string shortcutHoverLabel: ""
+  readonly property var shortcutHoverParts: Model.keyParts(root.shortcutHoverKeys)
   property int columnCount: 3
   readonly property var desktopGroupNames: ["Window", "Launch", "System", "Workspace", "Hardware", "Other"]
   property var desktopGroupVisibility: ({
@@ -82,6 +90,7 @@ Item {
     root.keyboardNavigationActive = false
     root.settingsOpen = false
     root.settingsButtonActive = false
+    root.hideShortcutHover()
     root.keyFocus = WlrKeyboardFocus.Exclusive
     root.loadPreferences()
     root.refresh()
@@ -90,6 +99,7 @@ Item {
 
   function close() {
     runTimer.stop()
+    root.hideShortcutHover()
     root.opened = false
     root.keyFocus = WlrKeyboardFocus.None
   }
@@ -109,6 +119,26 @@ Item {
     if (collectProc.running) collectProc.running = false
     collectProc.running = true
   }
+
+  function showShortcutHover(rowItem, shortcut, flatIndex) {
+    if (!rowItem || !shortcut) return
+    var point = rowItem.mapToItem(card, 0, 0)
+    root.shortcutHoverIndex = flatIndex
+    root.shortcutHoverX = point.x
+    root.shortcutHoverY = point.y
+    root.shortcutHoverRowWidth = rowItem.width
+    root.shortcutHoverKeys = String(shortcut.keys || "")
+    root.shortcutHoverLabel = String(shortcut.label || "")
+    root.shortcutHoverVisible = true
+  }
+
+  function hideShortcutHover(flatIndex) {
+    if (flatIndex !== undefined && root.shortcutHoverIndex !== flatIndex) return
+    root.shortcutHoverVisible = false
+    root.shortcutHoverIndex = -1
+  }
+
+  onSettingsOpenChanged: if (root.settingsOpen) root.hideShortcutHover()
 
   function applyPayload(raw) {
     root.sheet = Model.buildGroups(Model.parsePayload(raw))
@@ -650,6 +680,7 @@ Item {
           enabled: !root.settingsOpen
           interactive: enabled && contentWidth > width
           onEnabledChanged: if (!enabled) cancelFlick()
+          onContentXChanged: root.hideShortcutHover()
           ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AsNeeded }
 
           Row {
@@ -733,6 +764,7 @@ Item {
                 boundsBehavior: Flickable.StopAtBounds
                 interactive: enabled && contentHeight > height
                 onEnabledChanged: if (!enabled) cancelFlick()
+                onContentYChanged: root.hideShortcutHover()
                 model: columnRoot.items
                 spacing: Style.spacing.sm
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
@@ -749,7 +781,6 @@ Item {
 
                       width: itemList.width
                       height: root.rowHeight
-                      z: rowRoot.labelTruncated && rowMouse.containsMouse ? 100 : 0
 
                       Rectangle {
                         id: rowSurface
@@ -813,11 +844,14 @@ Item {
                           hoverEnabled: true
                           cursorShape: Qt.PointingHandCursor
                           onEntered: {
+                            if (rowRoot.labelTruncated)
+                              root.showShortcutHover(rowRoot, rowRoot.modelData, rowRoot.flatIndex)
                             if (root.keyboardNavigationActive) return
                             root.settingsButtonActive = false
                             root.cursorActive = true
                             root.selectedIndex = rowRoot.flatIndex
                           }
+                          onExited: root.hideShortcutHover(rowRoot.flatIndex)
                           onPressed: {
                             root.keyboardNavigationActive = false
                             root.settingsButtonActive = false
@@ -827,35 +861,6 @@ Item {
                           onClicked: root.runItem(rowRoot.modelData)
                         }
 
-                        Rectangle {
-                          id: expandedShortcut
-                          readonly property bool openUpwards: rowRoot.y + height > itemList.contentY + itemList.height
-                          anchors.left: parent.left
-                          anchors.right: parent.right
-                          y: openUpwards ? parent.height - height : 0
-                          height: Math.max(root.rowHeight, expandedShortcutText.implicitHeight + Style.spacing.md * 2)
-                          z: 10
-                          visible: rowRoot.labelTruncated && rowMouse.containsMouse && !root.settingsOpen
-                          radius: Math.max(4, root.cornerRadius - 4)
-                          color: "#111111"
-                          border.width: 1
-                          border.color: "#4a4a4a"
-
-                          Text {
-                            id: expandedShortcutText
-                            anchors.left: parent.left
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.leftMargin: Style.spacing.md
-                            anchors.rightMargin: Style.spacing.md
-                            text: String(rowRoot.modelData.keys || "") + "  " + String(rowRoot.modelData.label || "")
-                            textFormat: Text.PlainText
-                            color: "#f2f2f2"
-                            font.family: root.fontFamily
-                            font.pixelSize: Style.font.body
-                            wrapMode: Text.WrapAtWordBoundaryOrAnywhere
-                          }
-                        }
                       }
                 }
               }
@@ -864,6 +869,72 @@ Item {
           }
         }
 
+      }
+
+      Rectangle {
+        id: expandedShortcut
+        readonly property real preferredWidth: expandedShortcutContent.implicitWidth + Style.spacing.md * 2
+        readonly property real minimumX: card.contentLeftInset
+        readonly property real maximumX: card.width - card.contentRightInset - width
+        x: maximumX < minimumX
+          ? minimumX
+          : Math.max(minimumX, Math.min(root.shortcutHoverX, maximumX))
+        y: root.shortcutHoverY
+        width: Math.max(root.shortcutHoverRowWidth, preferredWidth)
+        height: root.rowHeight
+        z: 49
+        visible: root.shortcutHoverVisible && !root.settingsOpen
+        radius: Math.max(4, root.cornerRadius - 4)
+        color: "#111111"
+        border.width: 1
+        border.color: "#4a4a4a"
+
+        Row {
+          id: expandedShortcutContent
+          anchors.left: parent.left
+          anchors.verticalCenter: parent.verticalCenter
+          anchors.leftMargin: Style.spacing.md
+          spacing: Style.spacing.md
+
+          Row {
+            spacing: Style.space(4)
+            anchors.verticalCenter: parent.verticalCenter
+
+            Repeater {
+              model: root.shortcutHoverParts
+
+              delegate: Rectangle {
+                required property string modelData
+                width: Math.max(Style.space(18), hoverKeyLabel.implicitWidth + Style.space(10))
+                height: Math.max(Style.space(18), Style.font.bodySmall + Style.space(6))
+                radius: 4
+                color: Util.alpha(root.foreground, 0.08)
+                border.width: 1
+                border.color: Util.alpha(root.foreground, 0.2)
+
+                Text {
+                  id: hoverKeyLabel
+                  anchors.centerIn: parent
+                  text: modelData
+                  textFormat: Text.PlainText
+                  color: "#f2f2f2"
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.bodySmall
+                }
+              }
+            }
+          }
+
+          Text {
+            anchors.verticalCenter: parent.verticalCenter
+            text: root.shortcutHoverLabel
+            textFormat: Text.PlainText
+            color: "#f2f2f2"
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.body
+            wrapMode: Text.NoWrap
+          }
+        }
       }
 
       Item {
