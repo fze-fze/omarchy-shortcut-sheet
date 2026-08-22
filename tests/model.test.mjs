@@ -60,13 +60,22 @@ test("keeps literal slash shortcuts runnable but rejects alternatives", () => {
   assert.equal(Catalog.canSend("G then I"), false)
 })
 
-test("keyboard selection stops at list boundaries instead of wrapping", () => {
-  assert.equal(Model.selectionAfterDelta(0, -1, 10, true), 0)
-  assert.equal(Model.selectionAfterDelta(9, 1, 10, true), 9)
-  assert.equal(Model.selectionAfterDelta(5, -1, 10, true), 4)
-  assert.equal(Model.selectionAfterDelta(5, 1, 10, true), 6)
-  assert.equal(Model.selectionAfterDelta(5, -1, 10, false), 0)
-  assert.equal(Model.selectionAfterDelta(0, 1, 0, false), 0)
+test("keyboard navigation moves by rows and columns without wrapping", () => {
+  const groups = [
+    { name: "One", items: [{}, {}, {}] },
+    { name: "Two", items: [{}, {}] },
+    { name: "Three", items: [{}, {}, {}, {}] },
+  ]
+
+  assert.equal(Model.selectionAfterMove(groups, 0, 0, -1, true), 0)
+  assert.equal(Model.selectionAfterMove(groups, 2, 0, 1, true), 2)
+  assert.equal(Model.selectionAfterMove(groups, 1, 1, 0, true), 4)
+  assert.equal(Model.selectionAfterMove(groups, 4, 1, 0, true), 6)
+  assert.equal(Model.selectionAfterMove(groups, 6, -1, 0, true), 4)
+  assert.equal(Model.selectionAfterMove(groups, 6, 0, 1, true), 7)
+  assert.equal(Model.selectionAfterMove(groups, 5, -1, 0, true), 3)
+  assert.equal(Model.selectionAfterMove(groups, 5, 0, 0, false), 0)
+  assert.equal(Model.selectionAfterMove([], 0, 1, 0, false), 0)
 })
 
 test("builds and filters desktop groups from live bindings", () => {
@@ -127,6 +136,10 @@ test("keeps long shortcut groups scrollable and keyboard selection visible", asy
   assert.match(source, /positionViewAtIndex\(localIndex,\s*ListView\.Contain\)/)
   assert.match(source, /function\s+ensureSelectionVisible\(\)/)
   assert.match(source, /onSelectionRevisionChanged\(\)/)
+  assert.match(source, /Qt\.Key_Left/)
+  assert.match(source, /Qt\.Key_Right/)
+  assert.match(source, /selectMove\(-1,\s*0\)/)
+  assert.match(source, /selectMove\(1,\s*0\)/)
 })
 
 test("bounds collected records and renders all QML text as plain text", async () => {

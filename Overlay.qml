@@ -126,12 +126,13 @@ Item {
     root.rebuildVisible()
   }
 
-  function selectDelta(delta) {
+  function selectMove(columnDelta, rowDelta) {
     if (root.flatItems.length === 0) return
-    root.selectedIndex = Model.selectionAfterDelta(
+    root.selectedIndex = Model.selectionAfterMove(
+      root.visibleGroups,
       root.selectedIndex,
-      delta,
-      root.flatItems.length,
+      columnDelta,
+      rowDelta,
       root.cursorActive
     )
     root.cursorActive = true
@@ -268,12 +269,22 @@ Item {
             return
           }
           if (event.key === Qt.Key_Up) {
-            root.selectDelta(-1)
+            root.selectMove(0, -1)
             event.accepted = true
             return
           }
           if (event.key === Qt.Key_Down) {
-            root.selectDelta(1)
+            root.selectMove(0, 1)
+            event.accepted = true
+            return
+          }
+          if (event.key === Qt.Key_Left) {
+            root.selectMove(-1, 0)
+            event.accepted = true
+            return
+          }
+          if (event.key === Qt.Key_Right) {
+            root.selectMove(1, 0)
             event.accepted = true
             return
           }

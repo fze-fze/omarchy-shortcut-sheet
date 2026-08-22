@@ -224,10 +224,45 @@ function flatten(groups) {
   return rows
 }
 
-function selectionAfterDelta(index, delta, length, cursorActive) {
-  if (length <= 0) return 0
-  if (!cursorActive) return 0
-  return Math.max(0, Math.min(length - 1, index + delta))
+function selectionPosition(groups, index) {
+  var offset = 0
+  var last = { groupIndex: 0, rowIndex: 0, flatIndex: 0 }
+  for (var i = 0; i < (groups || []).length; i++) {
+    var length = (groups[i].items || []).length
+    if (length <= 0) continue
+    last = { groupIndex: i, rowIndex: length - 1, flatIndex: offset + length - 1 }
+    if (index < offset + length) {
+      var row = Math.max(0, Math.min(length - 1, index - offset))
+      return { groupIndex: i, rowIndex: row, flatIndex: offset + row }
+    }
+    offset += length
+  }
+  return last
+}
+
+function selectionAfterMove(groups, index, columnDelta, rowDelta, cursorActive) {
+  var list = groups || []
+  if (flatten(list).length === 0 || !cursorActive) return 0
+
+  var current = selectionPosition(list, index)
+  var targetGroup = current.groupIndex
+  if (columnDelta !== 0) {
+    targetGroup = Math.max(0, Math.min(list.length - 1, targetGroup + columnDelta))
+    while (targetGroup >= 0 && targetGroup < list.length
+        && (list[targetGroup].items || []).length === 0)
+      targetGroup += columnDelta < 0 ? -1 : 1
+    if (targetGroup < 0 || targetGroup >= list.length)
+      targetGroup = current.groupIndex
+  }
+
+  var targetLength = (list[targetGroup].items || []).length
+  var targetRow = current.rowIndex + rowDelta
+  targetRow = Math.max(0, Math.min(targetLength - 1, targetRow))
+
+  var targetOffset = 0
+  for (var i = 0; i < targetGroup; i++)
+    targetOffset += (list[i].items || []).length
+  return targetOffset + targetRow
 }
 
 function findByKeys(groups, keys) {
