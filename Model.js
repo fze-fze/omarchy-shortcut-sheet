@@ -242,9 +242,9 @@ function selectionPosition(groups, index) {
 
 function selectionAfterMove(groups, index, columnDelta, rowDelta, cursorActive) {
   var list = groups || []
-  if (flatten(list).length === 0 || !cursorActive) return 0
+  if (flatten(list).length === 0) return 0
 
-  var current = selectionPosition(list, index)
+  var current = selectionPosition(list, cursorActive ? index : 0)
   var targetGroup = current.groupIndex
   if (columnDelta !== 0) {
     targetGroup = Math.max(0, Math.min(list.length - 1, targetGroup + columnDelta))

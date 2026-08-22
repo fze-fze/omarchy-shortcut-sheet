@@ -74,7 +74,10 @@ test("keyboard navigation moves by rows and columns without wrapping", () => {
   assert.equal(Model.selectionAfterMove(groups, 6, -1, 0, true), 4)
   assert.equal(Model.selectionAfterMove(groups, 6, 0, 1, true), 7)
   assert.equal(Model.selectionAfterMove(groups, 5, -1, 0, true), 3)
-  assert.equal(Model.selectionAfterMove(groups, 5, 0, 0, false), 0)
+  assert.equal(Model.selectionAfterMove(groups, 5, 1, 0, false), 3)
+  assert.equal(Model.selectionAfterMove(groups, 5, 0, 1, false), 1)
+  assert.equal(Model.selectionAfterMove(groups, 5, -1, 0, false), 0)
+  assert.equal(Model.selectionAfterMove(groups, 5, 0, -1, false), 0)
   assert.equal(Model.selectionAfterMove([], 0, 1, 0, false), 0)
 })
 

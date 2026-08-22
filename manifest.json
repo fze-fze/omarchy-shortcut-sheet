@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.fze-fze.shortcut-sheet",
   "name": "Shortcut Sheet",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "author": "fze",
   "license": "MIT",
   "description": "Tap Super once to show all live Omarchy shortcuts plus current app or page shortcuts.",
