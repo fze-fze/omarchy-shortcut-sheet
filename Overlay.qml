@@ -162,6 +162,7 @@ Item {
   }
 
   function setFilter(nextFilter) {
+    root.hideShortcutHover()
     root.filterText = nextFilter
     root.selectedIndex = 0
     root.cursorActive = true
@@ -221,6 +222,7 @@ Item {
     }
     next[name] = !next[name]
     root.desktopGroupVisibility = next
+    root.hideShortcutHover()
     root.selectedIndex = 0
     root.cursorActive = false
     root.keyboardNavigationActive = false
@@ -247,6 +249,7 @@ Item {
         root.cursorActive ? root.selectedIndex : 0
       )
       if (position.groupIndex === root.visibleGroups.length - 1) {
+        root.hideShortcutHover()
         root.settingsButtonActive = true
         root.cursorActive = false
         return
@@ -778,6 +781,25 @@ Item {
                       readonly property var parts: Model.keyParts(modelData.keys)
                       readonly property bool labelTruncated: shortcutLabel.truncated
                         || shortcutLabel.implicitWidth > shortcutLabel.width + 1
+
+                      function showKeyboardShortcutHover() {
+                        if (!rowRoot.hasCursor || !root.keyboardNavigationActive || !rowRoot.labelTruncated)
+                          return
+                        root.showShortcutHover(rowRoot, rowRoot.modelData, rowRoot.flatIndex)
+                      }
+
+                      onHasCursorChanged: {
+                        if (rowRoot.hasCursor)
+                          Qt.callLater(rowRoot.showKeyboardShortcutHover)
+                        else
+                          root.hideShortcutHover(rowRoot.flatIndex)
+                      }
+                      onLabelTruncatedChanged: {
+                        if (rowRoot.labelTruncated)
+                          Qt.callLater(rowRoot.showKeyboardShortcutHover)
+                        else
+                          root.hideShortcutHover(rowRoot.flatIndex)
+                      }
 
                       width: itemList.width
                       height: root.rowHeight
