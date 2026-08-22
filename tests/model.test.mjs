@@ -98,6 +98,27 @@ test("builds and filters desktop groups from live bindings", () => {
   assert.equal(filtered[0].items[0].label, "Terminal")
 })
 
+test("hides only desktop groups and always keeps current-context shortcuts", () => {
+  const groups = [
+    { name: "Window", items: [{ kind: "app", label: "Application window action" }] },
+    { name: "Window", items: [{ kind: "desktop", label: "Desktop window action" }] },
+    { name: "Launch", items: [{ kind: "desktop", label: "Launch action" }] },
+    { name: "System", items: [{ kind: "desktop", label: "System action" }] },
+  ]
+
+  const visible = Model.applyGroupVisibility(groups, {
+    Window: false,
+    Launch: true,
+    System: false,
+  })
+
+  assert.deepEqual(
+    Array.from(visible, (group) => group.items[0].label),
+    ["Application window action", "Launch action"],
+  )
+  assert.equal(Model.applyGroupVisibility(groups, null).length, groups.length)
+})
+
 test("keeps every scanned desktop binding, including mouse, media, workspace, and custom rows", () => {
   const binds = [
     { keys: "SUPER + 1", label: "Switch to workspace 1", dispatcher: "lua", arg: "workspace 1" },
@@ -145,6 +166,18 @@ test("keeps long shortcut groups scrollable and keyboard selection visible", asy
   assert.match(source, /selectMove\(1,\s*0\)/)
   assert.match(source, /property bool keyboardNavigationActive:\s*false/)
   assert.match(source, /if \(root\.keyboardNavigationActive\) return/)
+})
+
+test("uses Omarchy controls for persistent desktop-group visibility settings", async () => {
+  const source = await readFile(resolve(root, "Overlay.qml"), "utf8")
+
+  assert.match(source, /PanelActionButton\s*{/)
+  assert.match(source, /tooltipText:\s*"Choose visible groups"/)
+  assert.match(source, /BorderSurface\s*{\s*id:\s*settingsCard/)
+  assert.match(source, /delegate:\s*Toggle\s*{/)
+  assert.match(source, /hiddenGroups/)
+  assert.match(source, /updateEntryInline\(root\.selfId/)
+  assert.match(source, /Model\.applyGroupVisibility/)
 })
 
 test("bounds collected records and renders all QML text as plain text", async () => {

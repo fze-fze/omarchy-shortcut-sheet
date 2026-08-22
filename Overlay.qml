@@ -20,6 +20,16 @@ Item {
   property int selectionRevision: 0
   property bool cursorActive: false
   property bool keyboardNavigationActive: false
+  property bool settingsOpen: false
+  readonly property var desktopGroupNames: ["Window", "Launch", "System", "Workspace", "Hardware", "Other"]
+  property var desktopGroupVisibility: ({
+    "Window": true,
+    "Launch": true,
+    "System": true,
+    "Workspace": true,
+    "Hardware": true,
+    "Other": true
+  })
   property var sheet: ({ appName: "", contextLabel: "", title: "", scannedCount: 0, groups: [] })
   property var visibleGroups: []
 
@@ -36,7 +46,7 @@ Item {
   property int headerHeight: Math.max(Style.space(42), Style.font.heading + Style.font.caption + Style.spacing.md)
   property int footerHeight: Math.max(Style.space(24), Style.font.body + Style.spacing.sm)
   property int footerBlockHeight: 1 + Style.spacing.sm + footerHeight
-  property string footerText: "Tap Super to open  ·  Esc to close"
+  property string footerText: "← → categories  ·  ↑ ↓ shortcuts  ·  Tap Super to open  ·  Esc to close"
   property int contentSpacing: Style.spacing.lg
   property int columnGap: Style.spacing.xxl
   property int columnWidth: Style.space(280)
@@ -76,7 +86,9 @@ Item {
     root.selectedIndex = 0
     root.cursorActive = false
     root.keyboardNavigationActive = false
+    root.settingsOpen = false
     root.keyFocus = WlrKeyboardFocus.Exclusive
+    root.loadPreferences()
     root.refresh()
     Qt.callLater(function() { keyCatcher.forceActiveFocus() })
   }
@@ -109,7 +121,10 @@ Item {
   }
 
   function rebuildVisible() {
-    root.visibleGroups = Model.filterGroups(root.sheet.groups || [], root.filterText)
+    root.visibleGroups = Model.applyGroupVisibility(
+      Model.filterGroups(root.sheet.groups || [], root.filterText),
+      root.desktopGroupVisibility
+    )
     groupModel.clear()
     for (var i = 0; i < root.visibleGroups.length; i++) {
       groupModel.append({
@@ -126,6 +141,53 @@ Item {
     root.selectedIndex = 0
     root.cursorActive = true
     root.rebuildVisible()
+  }
+
+  function pluginSettings() {
+    if (!root.shell || !root.shell.shellConfig) return ({})
+    var plugins = root.shell.shellConfig.plugins || []
+    for (var i = 0; i < plugins.length; i++) {
+      if (plugins[i] && String(plugins[i].id || "") === root.selfId)
+        return plugins[i]
+    }
+    return ({})
+  }
+
+  function loadPreferences() {
+    var settings = root.pluginSettings()
+    var hidden = settings.hiddenGroups instanceof Array ? settings.hiddenGroups : []
+    var next = ({})
+    for (var i = 0; i < root.desktopGroupNames.length; i++) {
+      var name = root.desktopGroupNames[i]
+      next[name] = hidden.indexOf(name) === -1
+    }
+    root.desktopGroupVisibility = next
+  }
+
+  function persistPreferences() {
+    if (!root.shell || typeof root.shell.updateEntryInline !== "function") return
+    var hidden = []
+    for (var i = 0; i < root.desktopGroupNames.length; i++) {
+      var name = root.desktopGroupNames[i]
+      if (root.desktopGroupVisibility[name] === false) hidden.push(name)
+    }
+    root.shell.updateEntryInline(root.selfId, { hiddenGroups: hidden })
+  }
+
+  function toggleDesktopGroup(name) {
+    if (root.desktopGroupNames.indexOf(name) === -1) return
+    var next = ({})
+    for (var i = 0; i < root.desktopGroupNames.length; i++) {
+      var groupName = root.desktopGroupNames[i]
+      next[groupName] = root.desktopGroupVisibility[groupName] !== false
+    }
+    next[name] = !next[name]
+    root.desktopGroupVisibility = next
+    root.selectedIndex = 0
+    root.cursorActive = false
+    root.keyboardNavigationActive = false
+    root.rebuildVisible()
+    root.persistPreferences()
   }
 
   function selectMove(columnDelta, rowDelta) {
@@ -266,8 +328,13 @@ Item {
         Keys.priority: Keys.BeforeItem
         Keys.onPressed: function(event) {
           if (event.key === Qt.Key_Escape) {
-            if (root.filterText) root.setFilter("")
+            if (root.settingsOpen) root.settingsOpen = false
+            else if (root.filterText) root.setFilter("")
             else root.dismiss()
+            event.accepted = true
+            return
+          }
+          if (root.settingsOpen) {
             event.accepted = true
             return
           }
@@ -324,6 +391,101 @@ Item {
         }
       }
 
+      MouseArea {
+        anchors.fill: parent
+        visible: root.settingsOpen
+        z: 50
+        onClicked: root.settingsOpen = false
+      }
+
+      PanelActionButton {
+        id: settingsButton
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.topMargin: card.contentTopInset
+        anchors.rightMargin: card.contentRightInset
+        z: 52
+        iconText: "󰒓"
+        tooltipText: "Choose visible groups"
+        foreground: root.foreground
+        fontFamily: root.fontFamily
+        fontSize: Style.font.subtitle
+        size: root.headerHeight
+        bordered: true
+        hasCursor: root.settingsOpen
+        onClicked: root.settingsOpen = !root.settingsOpen
+      }
+
+      BorderSurface {
+        id: settingsCard
+        anchors.top: settingsButton.bottom
+        anchors.right: settingsButton.right
+        anchors.topMargin: Style.spacing.sm
+        width: Math.min(card.width - root.contentMargin * 2, Style.space(320))
+        height: settingsContent.implicitHeight + contentTopInset + contentBottomInset
+        z: 51
+        visible: opacity > 0
+        enabled: root.settingsOpen
+        opacity: root.settingsOpen ? 1 : 0
+        radius: root.cornerRadius
+        color: root.background
+        borderSpec: root.borderSpec
+        padding: Style.spacing.lg
+
+        Behavior on opacity {
+          NumberAnimation { duration: 100; easing.type: Easing.OutCubic }
+        }
+
+        MouseArea { anchors.fill: parent; onClicked: {} }
+
+        Column {
+          id: settingsContent
+          anchors.top: parent.top
+          anchors.left: parent.left
+          anchors.right: parent.right
+          anchors.topMargin: settingsCard.contentTopInset
+          anchors.leftMargin: settingsCard.contentLeftInset
+          anchors.rightMargin: settingsCard.contentRightInset
+          spacing: Style.spacing.sm
+
+          Text {
+            width: parent.width
+            text: "Visible groups"
+            textFormat: Text.PlainText
+            color: root.foreground
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.subtitle
+            font.bold: true
+          }
+
+          Text {
+            width: parent.width
+            text: "Current app and page shortcuts always stay visible."
+            textFormat: Text.PlainText
+            color: root.foreground
+            opacity: 0.58
+            font.family: root.fontFamily
+            font.pixelSize: Style.font.caption
+            wrapMode: Text.WordWrap
+          }
+
+          Repeater {
+            model: root.desktopGroupNames
+
+            delegate: Toggle {
+              required property string modelData
+              width: settingsContent.width
+              label: modelData
+              checked: root.desktopGroupVisibility[modelData] !== false
+              foreground: root.foreground
+              accent: Color.accent
+              fontFamily: root.fontFamily
+              onClicked: root.toggleDesktopGroup(modelData)
+            }
+          }
+        }
+      }
+
       Column {
         id: cardInner
         anchors.top: parent.top
@@ -345,6 +507,7 @@ Item {
             id: titleLabel
             anchors.left: parent.left
             anchors.right: parent.right
+            anchors.rightMargin: settingsButton.width + Style.spacing.sm
             anchors.top: parent.top
             text: root.headerTitle
             textFormat: Text.PlainText
@@ -358,6 +521,7 @@ Item {
           Text {
             anchors.left: parent.left
             anchors.right: parent.right
+            anchors.rightMargin: settingsButton.width + Style.spacing.sm
             anchors.top: titleLabel.bottom
             anchors.topMargin: Style.space(2)
             text: root.headerHint

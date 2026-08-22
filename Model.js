@@ -213,6 +213,18 @@ function filterGroups(groups, query) {
   return out
 }
 
+function applyGroupVisibility(groups, visibility) {
+  var out = []
+  for (var i = 0; i < (groups || []).length; i++) {
+    var entry = groups[i]
+    var items = entry.items || []
+    var isDesktop = items.length > 0 && items[0].kind === "desktop"
+    if (!isDesktop || !visibility || visibility[entry.name] !== false)
+      out.push(entry)
+  }
+  return out
+}
+
 function flatten(groups) {
   var rows = []
   for (var i = 0; i < (groups || []).length; i++) {

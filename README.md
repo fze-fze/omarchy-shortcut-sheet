@@ -19,6 +19,7 @@ Grok, Neovim, lazygit, QQ, and the Omarchy Agent.
 - Type-to-filter navigation
 - Keyboard and mouse selection
 - Independent vertical group scrolling and horizontal category scrolling
+- Persistent visibility controls for desktop shortcut groups
 - Theme-aware Omarchy UI
 - No network access, background daemon, or elevated privileges
 
@@ -54,8 +55,12 @@ open the sheet. Press <kbd>Esc</kbd> or click the dimmed background to close it.
 ## Use
 
 - Type to filter the visible shortcuts.
-- Use <kbd>Up</kbd> and <kbd>Down</kbd> to move through results.
+- Use <kbd>Left</kbd> and <kbd>Right</kbd> to switch categories.
+- Use <kbd>Up</kbd> and <kbd>Down</kbd> to move within the current category.
 - Press <kbd>Enter</kbd> or click a row to run it.
+- Use the gear button to show or hide Window, Launch, System, Workspace,
+  Hardware, and Other groups. Current app and page shortcuts always remain
+  visible.
 - Press <kbd>Esc</kbd> once to clear a filter, then again to close the sheet.
 
 ## Update
@@ -73,8 +78,8 @@ First remove the four Shortcut Sheet lines from
 omarchy plugin remove io.github.fze-fze.shortcut-sheet
 ```
 
-The plugin never edits user configuration, so removal does not leave behind any
-plugin-created files or services.
+The plugin stores hidden-group preferences inline in Omarchy's existing
+`shell.json` plugin entry. It does not create services or separate state files.
 
 ## How it works
 
