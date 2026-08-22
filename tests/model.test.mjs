@@ -188,6 +188,10 @@ test("uses Omarchy controls for persistent view settings", async () => {
   assert.match(source, /interactive:\s*enabled\s*&&\s*contentWidth\s*>\s*width/)
   assert.match(source, /interactive:\s*enabled\s*&&\s*contentHeight\s*>\s*height/)
   assert.equal((source.match(/onEnabledChanged:\s*if\s*\(!enabled\)\s*cancelFlick\(\)/g) || []).length, 2)
+  assert.match(source, /id:\s*settingsContent[\s\S]*?spacing:\s*Style\.spacing\.lg/)
+  assert.match(source, /id:\s*settingsHeader/)
+  assert.match(source, /id:\s*columnsSection/)
+  assert.match(source, /id:\s*groupsSection/)
 })
 
 test("defaults to a stable compact three-column panel while filtering", async () => {

@@ -465,71 +465,89 @@ Item {
           Column {
             id: settingsContent
             width: settingsFlick.width
-            spacing: Style.spacing.sm
+            spacing: Style.spacing.lg
 
-            Text {
+            Column {
+              id: settingsHeader
               width: parent.width
-              text: "View settings"
-              textFormat: Text.PlainText
-              color: root.foreground
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.subtitle
-              font.bold: true
+              spacing: Style.spacing.xs
+
+              Text {
+                width: parent.width
+                text: "View settings"
+                textFormat: Text.PlainText
+                color: root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.subtitle
+                font.bold: true
+              }
+
+              Text {
+                width: parent.width
+                text: "Current app and page shortcuts always stay visible."
+                textFormat: Text.PlainText
+                color: root.foreground
+                opacity: 0.58
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
+                wrapMode: Text.NoWrap
+              }
             }
 
-            Text {
+            Column {
+              id: columnsSection
               width: parent.width
-              text: "Current app and page shortcuts always stay visible."
-              textFormat: Text.PlainText
-              color: root.foreground
-              opacity: 0.58
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              wrapMode: Text.NoWrap
-            }
+              spacing: Style.spacing.sm
 
-            Text {
-              width: parent.width
-              text: "Columns"
-              textFormat: Text.PlainText
-              color: root.foreground
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              font.bold: true
-            }
+              Text {
+                width: parent.width
+                text: "Columns"
+                textFormat: Text.PlainText
+                color: root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
+                font.bold: true
+              }
 
-            Ui.ButtonGroup {
-              options: ["3", "4"]
-              value: String(root.columnCount)
-              foreground: root.foreground
-              background: root.background
-              accent: Color.accent
-              fontFamily: root.fontFamily
-              onChanged: function(value) { root.setColumnCount(value) }
-            }
-
-            Text {
-              width: parent.width
-              text: "Groups"
-              textFormat: Text.PlainText
-              color: root.foreground
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              font.bold: true
-            }
-
-            Repeater {
-              model: root.desktopGroupNames
-
-              delegate: Toggle {
-                required property string modelData
-                width: settingsContent.width
-                label: modelData
-                checked: root.desktopGroupVisibility[modelData] !== false
+              Ui.ButtonGroup {
+                options: ["3", "4"]
+                value: String(root.columnCount)
                 foreground: root.foreground
+                background: root.background
                 accent: Color.accent
                 fontFamily: root.fontFamily
-                onClicked: root.toggleDesktopGroup(modelData)
+                onChanged: function(value) { root.setColumnCount(value) }
+              }
+            }
+
+            Column {
+              id: groupsSection
+              width: parent.width
+              spacing: Style.spacing.sm
+
+              Text {
+                width: parent.width
+                text: "Groups"
+                textFormat: Text.PlainText
+                color: root.foreground
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
+                font.bold: true
+              }
+
+              Repeater {
+                model: root.desktopGroupNames
+
+                delegate: Toggle {
+                  required property string modelData
+                  width: groupsSection.width
+                  label: modelData
+                  checked: root.desktopGroupVisibility[modelData] !== false
+                  foreground: root.foreground
+                  accent: Color.accent
+                  fontFamily: root.fontFamily
+                  onClicked: root.toggleDesktopGroup(modelData)
+                }
               }
             }
           }
