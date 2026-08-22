@@ -714,6 +714,21 @@ Item {
                 return start
               }
 
+                function showSelectedShortcutHover() {
+                  if (!root.keyboardNavigationActive || !root.cursorActive || root.settingsButtonActive)
+                    return
+                  if (root.selectedIndex < columnRoot.startIndex
+                      || root.selectedIndex >= columnRoot.startIndex + columnRoot.items.length)
+                    return
+
+                  var localIndex = root.selectedIndex - columnRoot.startIndex
+                  var selectedRow = itemList.itemAtIndex(localIndex)
+                  if (selectedRow && selectedRow.labelTruncated)
+                    root.showShortcutHover(selectedRow, selectedRow.modelData, selectedRow.flatIndex)
+                  else
+                    root.hideShortcutHover()
+                }
+
                 function ensureSelectionVisible() {
                   if (root.selectedIndex < columnRoot.startIndex
                       || root.selectedIndex >= columnRoot.startIndex + columnRoot.items.length)
@@ -728,6 +743,7 @@ Item {
                       Math.max(0, groupFlick.contentWidth - groupFlick.width),
                       columnRoot.x + columnRoot.width - groupFlick.width
                     )
+                  Qt.callLater(columnRoot.showSelectedShortcutHover)
                 }
 
               Connections {
@@ -767,7 +783,10 @@ Item {
                 boundsBehavior: Flickable.StopAtBounds
                 interactive: enabled && contentHeight > height
                 onEnabledChanged: if (!enabled) cancelFlick()
-                onContentYChanged: root.hideShortcutHover()
+                onContentYChanged: {
+                  root.hideShortcutHover()
+                  Qt.callLater(columnRoot.showSelectedShortcutHover)
+                }
                 model: columnRoot.items
                 spacing: Style.spacing.sm
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }

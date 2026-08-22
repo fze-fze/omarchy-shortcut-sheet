@@ -223,6 +223,10 @@ test("shows complete truncated shortcuts in a hover overlay", async () => {
   assert.match(source, /onHasCursorChanged:[\s\S]*?Qt\.callLater\(rowRoot\.showKeyboardShortcutHover\)/)
   assert.match(source, /onLabelTruncatedChanged:[\s\S]*?Qt\.callLater\(rowRoot\.showKeyboardShortcutHover\)/)
   assert.match(source, /position\.groupIndex\s*===\s*root\.visibleGroups\.length\s*-\s*1\)[\s\S]*?root\.hideShortcutHover\(\)[\s\S]*?root\.settingsButtonActive\s*=\s*true/)
+  assert.match(source, /function showSelectedShortcutHover\(\)/)
+  assert.match(source, /itemList\.itemAtIndex\(localIndex\)/)
+  assert.match(source, /onContentYChanged:[\s\S]*?Qt\.callLater\(columnRoot\.showSelectedShortcutHover\)/)
+  assert.match(source, /ensureSelectionVisible\(\)[\s\S]*?Qt\.callLater\(columnRoot\.showSelectedShortcutHover\)/)
 })
 
 test("defaults to a stable compact three-column panel while filtering", async () => {
