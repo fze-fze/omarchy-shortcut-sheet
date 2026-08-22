@@ -224,6 +224,12 @@ function flatten(groups) {
   return rows
 }
 
+function selectionAfterDelta(index, delta, length, cursorActive) {
+  if (length <= 0) return 0
+  if (!cursorActive) return 0
+  return Math.max(0, Math.min(length - 1, index + delta))
+}
+
 function findByKeys(groups, keys) {
   var want = normalizeKeys(keys)
   if (!want) return null

@@ -60,6 +60,15 @@ test("keeps literal slash shortcuts runnable but rejects alternatives", () => {
   assert.equal(Catalog.canSend("G then I"), false)
 })
 
+test("keyboard selection stops at list boundaries instead of wrapping", () => {
+  assert.equal(Model.selectionAfterDelta(0, -1, 10, true), 0)
+  assert.equal(Model.selectionAfterDelta(9, 1, 10, true), 9)
+  assert.equal(Model.selectionAfterDelta(5, -1, 10, true), 4)
+  assert.equal(Model.selectionAfterDelta(5, 1, 10, true), 6)
+  assert.equal(Model.selectionAfterDelta(5, -1, 10, false), 0)
+  assert.equal(Model.selectionAfterDelta(0, 1, 0, false), 0)
+})
+
 test("builds and filters desktop groups from live bindings", () => {
   const sheet = Model.buildGroups({
     window: {},
@@ -117,6 +126,7 @@ test("keeps long shortcut groups scrollable and keyboard selection visible", asy
   assert.match(source, /interactive:\s*contentHeight\s*>\s*height/)
   assert.match(source, /positionViewAtIndex\(localIndex,\s*ListView\.Contain\)/)
   assert.match(source, /function\s+ensureSelectionVisible\(\)/)
+  assert.match(source, /onSelectionRevisionChanged\(\)/)
 })
 
 test("bounds collected records and renders all QML text as plain text", async () => {

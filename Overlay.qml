@@ -17,6 +17,7 @@ Item {
   property bool opened: false
   property string filterText: ""
   property int selectedIndex: 0
+  property int selectionRevision: 0
   property bool cursorActive: false
   property var sheet: ({ appName: "", contextLabel: "", title: "", scannedCount: 0, groups: [] })
   property var visibleGroups: []
@@ -127,15 +128,14 @@ Item {
 
   function selectDelta(delta) {
     if (root.flatItems.length === 0) return
-    if (!root.cursorActive) {
-      root.cursorActive = true
-      root.selectedIndex = delta < 0 ? root.flatItems.length - 1 : 0
-      return
-    }
-    var next = root.selectedIndex + delta
-    if (next < 0) next = root.flatItems.length - 1
-    if (next >= root.flatItems.length) next = 0
-    root.selectedIndex = next
+    root.selectedIndex = Model.selectionAfterDelta(
+      root.selectedIndex,
+      delta,
+      root.flatItems.length,
+      root.cursorActive
+    )
+    root.cursorActive = true
+    root.selectionRevision += 1
   }
 
   function runIndex(index) {
@@ -415,6 +415,9 @@ Item {
               Connections {
                 target: root
                 function onSelectedIndexChanged() {
+                  columnRoot.ensureSelectionVisible()
+                }
+                function onSelectionRevisionChanged() {
                   columnRoot.ensureSelectionVisible()
                 }
               }
