@@ -168,16 +168,32 @@ test("keeps long shortcut groups scrollable and keyboard selection visible", asy
   assert.match(source, /if \(root\.keyboardNavigationActive\) return/)
 })
 
-test("uses Omarchy controls for persistent desktop-group visibility settings", async () => {
+test("uses Omarchy controls for persistent view settings", async () => {
   const source = await readFile(resolve(root, "Overlay.qml"), "utf8")
 
   assert.match(source, /PanelActionButton\s*{/)
-  assert.match(source, /tooltipText:\s*"Choose visible groups"/)
+  assert.match(source, /tooltipText:\s*"View settings"/)
   assert.match(source, /BorderSurface\s*{\s*id:\s*settingsCard/)
+  assert.match(source, /Ui\.ButtonGroup\s*{/)
+  assert.match(source, /options:\s*\["3",\s*"4"\]/)
   assert.match(source, /delegate:\s*Toggle\s*{/)
   assert.match(source, /hiddenGroups/)
+  assert.match(source, /columnCount:\s*root\.columnCount/)
   assert.match(source, /updateEntryInline\(root\.selfId/)
   assert.match(source, /Model\.applyGroupVisibility/)
+})
+
+test("defaults to a stable compact three-column panel while filtering", async () => {
+  const source = await readFile(resolve(root, "Overlay.qml"), "utf8")
+  const widthLine = source.match(/property int cardWidth:[^\n]+/)?.[0] || ""
+  const heightLine = source.match(/property int cardHeight:[^\n]+/)?.[0] || ""
+
+  assert.match(source, /property int columnCount:\s*3/)
+  assert.match(source, /readonly property int visibleColumns:\s*root\.columnCount/)
+  assert.match(widthLine, /root\.columnCount/)
+  assert.doesNotMatch(widthLine, /visibleGroups|groupModel|groupCount|filterText/)
+  assert.match(heightLine, /panel\.height\s*\*\s*0\.72/)
+  assert.doesNotMatch(heightLine, /visibleGroups|groupModel|maxRows|filterText/)
 })
 
 test("bounds collected records and renders all QML text as plain text", async () => {

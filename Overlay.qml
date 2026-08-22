@@ -5,6 +5,7 @@ import QtQuick
 import QtQuick.Controls
 import qs.Commons
 import qs.Ui
+import qs.Ui as Ui
 import "Model.js" as Model
 
 Item {
@@ -21,6 +22,7 @@ Item {
   property bool cursorActive: false
   property bool keyboardNavigationActive: false
   property bool settingsOpen: false
+  property int columnCount: 3
   readonly property var desktopGroupNames: ["Window", "Launch", "System", "Workspace", "Hardware", "Other"]
   property var desktopGroupVisibility: ({
     "Window": true,
@@ -51,18 +53,9 @@ Item {
   property int columnGap: Style.spacing.xxl
   property int columnWidth: Style.space(280)
   property int rowHeight: Math.max(Style.space(28), Style.font.body + Style.spacing.md)
-  readonly property int groupCount: Math.max(1, visibleGroups.length)
-  readonly property int maxRows: {
-    var max = 1
-    for (var i = 0; i < root.visibleGroups.length; i++) {
-      var n = (root.visibleGroups[i].items || []).length
-      if (n > max) max = n
-    }
-    return max
-  }
-  property int cardWidth: Math.min(panel.width - Style.gapsOut * 2, root.columnWidth * root.groupCount + root.columnGap * Math.max(0, root.groupCount - 1) + root.contentMargin * 2 + Style.space(8))
+  property int cardWidth: Math.min(panel.width - Style.gapsOut * 2, root.columnWidth * root.columnCount + root.columnGap * (root.columnCount - 1) + root.contentMargin * 2 + Style.space(8))
   readonly property int maxCardHeight: Math.max(Style.space(240), panel.height - Style.gapsOut * 2)
-  property int cardHeight: Math.min(root.maxCardHeight, root.headerHeight + root.footerBlockHeight + root.contentSpacing * 2 + Style.font.caption + Style.spacing.sm + root.rowHeight * root.maxRows + root.contentMargin * 2 + Style.space(20))
+  property int cardHeight: Math.min(root.maxCardHeight, Math.max(Style.space(420), Math.round(panel.height * 0.72)))
   property int keyFocus: WlrKeyboardFocus.None
 
   readonly property string pluginDir: (root.manifest && root.manifest.__sourceDir)
@@ -156,6 +149,7 @@ Item {
   function loadPreferences() {
     var settings = root.pluginSettings()
     var hidden = settings.hiddenGroups instanceof Array ? settings.hiddenGroups : []
+    root.columnCount = Number(settings.columnCount) === 4 ? 4 : 3
     var next = ({})
     for (var i = 0; i < root.desktopGroupNames.length; i++) {
       var name = root.desktopGroupNames[i]
@@ -171,7 +165,18 @@ Item {
       var name = root.desktopGroupNames[i]
       if (root.desktopGroupVisibility[name] === false) hidden.push(name)
     }
-    root.shell.updateEntryInline(root.selfId, { hiddenGroups: hidden })
+    root.shell.updateEntryInline(root.selfId, {
+      hiddenGroups: hidden,
+      columnCount: root.columnCount
+    })
+  }
+
+  function setColumnCount(value) {
+    var next = Number(value) === 4 ? 4 : 3
+    if (root.columnCount === next) return
+    root.columnCount = next
+    root.selectionRevision += 1
+    root.persistPreferences()
   }
 
   function toggleDesktopGroup(name) {
@@ -406,7 +411,7 @@ Item {
         anchors.rightMargin: card.contentRightInset
         z: 52
         iconText: "󰒓"
-        tooltipText: "Choose visible groups"
+        tooltipText: "View settings"
         foreground: root.foreground
         fontFamily: root.fontFamily
         fontSize: Style.font.subtitle
@@ -422,7 +427,10 @@ Item {
         anchors.right: settingsButton.right
         anchors.topMargin: Style.spacing.sm
         width: Math.min(card.width - root.contentMargin * 2, Style.space(320))
-        height: settingsContent.implicitHeight + contentTopInset + contentBottomInset
+        height: Math.min(
+          settingsContent.implicitHeight + contentTopInset + contentBottomInset,
+          card.height - y - card.contentBottomInset
+        )
         z: 51
         visible: opacity > 0
         enabled: root.settingsOpen
@@ -438,49 +446,90 @@ Item {
 
         MouseArea { anchors.fill: parent; onClicked: {} }
 
-        Column {
-          id: settingsContent
-          anchors.top: parent.top
-          anchors.left: parent.left
-          anchors.right: parent.right
+        Flickable {
+          id: settingsFlick
+          anchors.fill: parent
           anchors.topMargin: settingsCard.contentTopInset
           anchors.leftMargin: settingsCard.contentLeftInset
           anchors.rightMargin: settingsCard.contentRightInset
-          spacing: Style.spacing.sm
+          anchors.bottomMargin: settingsCard.contentBottomInset
+          contentWidth: width
+          contentHeight: settingsContent.implicitHeight
+          clip: true
+          boundsBehavior: Flickable.StopAtBounds
+          flickableDirection: Flickable.VerticalFlick
+          interactive: contentHeight > height
+          ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
-          Text {
-            width: parent.width
-            text: "Visible groups"
-            textFormat: Text.PlainText
-            color: root.foreground
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.subtitle
-            font.bold: true
-          }
+          Column {
+            id: settingsContent
+            width: settingsFlick.width
+            spacing: Style.spacing.sm
 
-          Text {
-            width: parent.width
-            text: "Current app and page shortcuts always stay visible."
-            textFormat: Text.PlainText
-            color: root.foreground
-            opacity: 0.58
-            font.family: root.fontFamily
-            font.pixelSize: Style.font.caption
-            wrapMode: Text.WordWrap
-          }
+            Text {
+              width: parent.width
+              text: "View settings"
+              textFormat: Text.PlainText
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.subtitle
+              font.bold: true
+            }
 
-          Repeater {
-            model: root.desktopGroupNames
+            Text {
+              width: parent.width
+              text: "Current app and page shortcuts always stay visible."
+              textFormat: Text.PlainText
+              color: root.foreground
+              opacity: 0.58
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              wrapMode: Text.WordWrap
+            }
 
-            delegate: Toggle {
-              required property string modelData
-              width: settingsContent.width
-              label: modelData
-              checked: root.desktopGroupVisibility[modelData] !== false
+            Text {
+              width: parent.width
+              text: "Columns"
+              textFormat: Text.PlainText
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              font.bold: true
+            }
+
+            Ui.ButtonGroup {
+              options: ["3", "4"]
+              value: String(root.columnCount)
               foreground: root.foreground
+              background: root.background
               accent: Color.accent
               fontFamily: root.fontFamily
-              onClicked: root.toggleDesktopGroup(modelData)
+              onChanged: function(value) { root.setColumnCount(value) }
+            }
+
+            Text {
+              width: parent.width
+              text: "Groups"
+              textFormat: Text.PlainText
+              color: root.foreground
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.caption
+              font.bold: true
+            }
+
+            Repeater {
+              model: root.desktopGroupNames
+
+              delegate: Toggle {
+                required property string modelData
+                width: settingsContent.width
+                label: modelData
+                checked: root.desktopGroupVisibility[modelData] !== false
+                foreground: root.foreground
+                accent: Color.accent
+                fontFamily: root.fontFamily
+                onClicked: root.toggleDesktopGroup(modelData)
+              }
             }
           }
         }
@@ -548,7 +597,7 @@ Item {
 
           Row {
             id: groupRow
-            readonly property int visibleColumns: Math.max(1, Math.min(4, groupModel.count))
+            readonly property int visibleColumns: root.columnCount
             readonly property int itemWidth: Math.max(1, Math.floor((groupFlick.width - root.columnGap * Math.max(0, visibleColumns - 1)) / visibleColumns))
             width: itemWidth * groupModel.count + root.columnGap * Math.max(0, groupModel.count - 1)
             height: groupFlick.height

@@ -20,6 +20,8 @@ Grok, Neovim, lazygit, QQ, and the Omarchy Agent.
 - Keyboard and mouse selection
 - Independent vertical group scrolling and horizontal category scrolling
 - Persistent visibility controls for desktop shortcut groups
+- A persistent three- or four-column layout, with three columns by default
+- Stable centered panel dimensions while filtering
 - Theme-aware Omarchy UI
 - No network access, background daemon, or elevated privileges
 
@@ -60,7 +62,7 @@ open the sheet. Press <kbd>Esc</kbd> or click the dimmed background to close it.
 - Press <kbd>Enter</kbd> or click a row to run it.
 - Use the gear button to show or hide Window, Launch, System, Workspace,
   Hardware, and Other groups. Current app and page shortcuts always remain
-  visible.
+  visible. The same menu switches between three and four columns.
 - Press <kbd>Esc</kbd> once to clear a filter, then again to close the sheet.
 
 ## Update
