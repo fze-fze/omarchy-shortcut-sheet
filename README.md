@@ -1,8 +1,8 @@
 # Shortcut Sheet for Omarchy
 
 Shortcut Sheet is a context-aware keyboard shortcut overlay for Omarchy Quattro.
-Tap <kbd>Super</kbd> to see shortcuts for the focused application, the current
-web page, window management, and common launch actions.
+Tap <kbd>Super</kbd> once to show the keyboard shortcuts available in the current
+app or web page, alongside window, launcher, and system shortcuts.
 
 The sheet reads your live Hyprland bindings, so desktop rows stay aligned with
 your configuration. It also includes curated shortcuts for terminals, browsers,
