@@ -70,8 +70,9 @@ test("ships English-only interface copy", async () => {
 test("keeps long shortcut groups scrollable and keyboard selection visible", async () => {
   const source = await readFile(resolve(root, "Overlay.qml"), "utf8")
 
-  assert.match(source, /Flickable\s*{\s*id:\s*itemFlick/)
+  assert.match(source, /ListView\s*{\s*id:\s*itemList/)
   assert.match(source, /ScrollBar\.vertical:\s*ScrollBar/)
   assert.match(source, /interactive:\s*contentHeight\s*>\s*height/)
+  assert.match(source, /positionViewAtIndex\(localIndex,\s*ListView\.Contain\)/)
   assert.match(source, /function\s+ensureSelectionVisible\(\)/)
 })

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.fze-fze.shortcut-sheet",
   "name": "Shortcut Sheet",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "author": "fze",
   "license": "MIT",
   "description": "Tap Super once to show keyboard shortcuts available in the current app or page.",

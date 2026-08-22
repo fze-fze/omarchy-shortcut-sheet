@@ -320,6 +320,7 @@ Item {
         anchors.bottomMargin: root.contentSpacing
         anchors.leftMargin: card.contentLeftInset
         spacing: root.contentSpacing
+        clip: true
 
         Item {
           width: parent.width
@@ -356,6 +357,7 @@ Item {
           width: parent.width
           height: Math.max(1, cardInner.height - root.headerHeight - root.contentSpacing)
           spacing: root.columnGap
+          clip: true
 
           Repeater {
             model: groupModel
@@ -383,15 +385,7 @@ Item {
                   return
 
                 var localIndex = root.selectedIndex - columnRoot.startIndex
-                var rowTop = localIndex * (root.rowHeight + Style.spacing.sm)
-                var rowBottom = rowTop + root.rowHeight
-                if (rowTop < itemFlick.contentY)
-                  itemFlick.contentY = rowTop
-                else if (rowBottom > itemFlick.contentY + itemFlick.height)
-                  itemFlick.contentY = Math.min(
-                    Math.max(0, itemFlick.contentHeight - itemFlick.height),
-                    rowBottom - itemFlick.height
-                  )
+                itemList.positionViewAtIndex(localIndex, ListView.Contain)
               }
 
               Connections {
@@ -416,30 +410,21 @@ Item {
                 font.letterSpacing: 1.1
               }
 
-              Flickable {
-                id: itemFlick
+              ListView {
+                id: itemList
                 anchors.top: groupTitle.bottom
                 anchors.topMargin: Style.spacing.sm
                 anchors.left: parent.left
                 anchors.right: parent.right
                 anchors.bottom: parent.bottom
-                contentWidth: width
-                contentHeight: itemColumn.implicitHeight
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
-                flickableDirection: Flickable.VerticalFlick
                 interactive: contentHeight > height
+                model: columnRoot.items
+                spacing: Style.spacing.sm
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
-                Column {
-                  id: itemColumn
-                  width: itemFlick.width
-                  spacing: Style.spacing.sm
-
-                  Repeater {
-                    model: columnRoot.items
-
-                    delegate: Item {
+                delegate: Item {
                       id: rowRoot
                       required property var modelData
                       required property int index
@@ -447,7 +432,7 @@ Item {
                       readonly property bool hasCursor: root.cursorActive && rowRoot.flatIndex === root.selectedIndex
                       readonly property var parts: Model.keyParts(modelData.keys)
 
-                      width: itemColumn.width
+                      width: itemList.width
                       height: root.rowHeight
 
                       Rectangle {
@@ -513,8 +498,6 @@ Item {
                           onClicked: root.runItem(rowRoot.modelData)
                         }
                       }
-                    }
-                  }
                 }
               }
             }
