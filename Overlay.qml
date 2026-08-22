@@ -19,6 +19,7 @@ Item {
   property int selectedIndex: 0
   property int selectionRevision: 0
   property bool cursorActive: false
+  property bool keyboardNavigationActive: false
   property var sheet: ({ appName: "", contextLabel: "", title: "", scannedCount: 0, groups: [] })
   property var visibleGroups: []
 
@@ -74,6 +75,7 @@ Item {
     root.filterText = ""
     root.selectedIndex = 0
     root.cursorActive = false
+    root.keyboardNavigationActive = false
     root.keyFocus = WlrKeyboardFocus.Exclusive
     root.refresh()
     Qt.callLater(function() { keyCatcher.forceActiveFocus() })
@@ -128,6 +130,7 @@ Item {
 
   function selectMove(columnDelta, rowDelta) {
     if (root.flatItems.length === 0) return
+    root.keyboardNavigationActive = true
     root.selectedIndex = Model.selectionAfterMove(
       root.visibleGroups,
       root.selectedIndex,
@@ -533,6 +536,12 @@ Item {
                           hoverEnabled: true
                           cursorShape: Qt.PointingHandCursor
                           onEntered: {
+                            if (root.keyboardNavigationActive) return
+                            root.cursorActive = true
+                            root.selectedIndex = rowRoot.flatIndex
+                          }
+                          onPressed: {
+                            root.keyboardNavigationActive = false
                             root.cursorActive = true
                             root.selectedIndex = rowRoot.flatIndex
                           }

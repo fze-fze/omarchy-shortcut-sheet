@@ -143,6 +143,8 @@ test("keeps long shortcut groups scrollable and keyboard selection visible", asy
   assert.match(source, /Qt\.Key_Right/)
   assert.match(source, /selectMove\(-1,\s*0\)/)
   assert.match(source, /selectMove\(1,\s*0\)/)
+  assert.match(source, /property bool keyboardNavigationActive:\s*false/)
+  assert.match(source, /if \(root\.keyboardNavigationActive\) return/)
 })
 
 test("bounds collected records and renders all QML text as plain text", async () => {
