@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.fze-fze.shortcut-sheet",
   "name": "Shortcut Sheet",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "fze",
   "license": "MIT",
   "description": "Shows keyboard shortcuts for the focused app, current page, and Omarchy desktop.",

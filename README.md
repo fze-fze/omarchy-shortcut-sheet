@@ -15,6 +15,7 @@ Grok, Neovim, lazygit, QQ, and the Omarchy Agent.
 - Live window, launcher, and system shortcuts from Hyprland
 - Type-to-filter navigation
 - Keyboard and mouse selection
+- Independent scrolling for long shortcut groups
 - Theme-aware Omarchy UI
 - No network access, background daemon, or elevated privileges
 

@@ -2,6 +2,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import QtQuick
+import QtQuick.Controls
 import qs.Commons
 import qs.Ui
 import "Model.js" as Model
@@ -376,100 +377,141 @@ Item {
                 return start
               }
 
-              width: Math.max(1, Math.floor((parent.width - root.columnGap * Math.max(0, groupModel.count - 1)) / Math.max(1, groupModel.count)))
-              implicitHeight: childrenRect.height
-              height: implicitHeight
+              function ensureSelectionVisible() {
+                if (root.selectedIndex < columnRoot.startIndex
+                    || root.selectedIndex >= columnRoot.startIndex + columnRoot.items.length)
+                  return
 
-              Column {
-                width: parent.width
-                spacing: Style.spacing.sm
+                var localIndex = root.selectedIndex - columnRoot.startIndex
+                var rowTop = localIndex * (root.rowHeight + Style.spacing.sm)
+                var rowBottom = rowTop + root.rowHeight
+                if (rowTop < itemFlick.contentY)
+                  itemFlick.contentY = rowTop
+                else if (rowBottom > itemFlick.contentY + itemFlick.height)
+                  itemFlick.contentY = Math.min(
+                    Math.max(0, itemFlick.contentHeight - itemFlick.height),
+                    rowBottom - itemFlick.height
+                  )
+              }
 
-                Text {
-                  width: parent.width
-                  text: columnRoot.name.toUpperCase()
-                  color: root.foreground
-                  opacity: 0.5
-                  font.family: root.fontFamily
-                  font.pixelSize: Style.font.caption
-                  font.bold: true
-                  font.letterSpacing: 1.1
+              Connections {
+                target: root
+                function onSelectedIndexChanged() {
+                  columnRoot.ensureSelectionVisible()
                 }
+              }
 
-                Repeater {
-                  model: columnRoot.items
+              width: Math.max(1, Math.floor((parent.width - root.columnGap * Math.max(0, groupModel.count - 1)) / Math.max(1, groupModel.count)))
+              height: parent.height
 
-                  delegate: Item {
-                    id: rowRoot
-                    required property var modelData
-                    required property int index
-                    readonly property int flatIndex: columnRoot.startIndex + index
-                    readonly property bool hasCursor: root.cursorActive && rowRoot.flatIndex === root.selectedIndex
-                    readonly property var parts: Model.keyParts(modelData.keys)
+              Text {
+                id: groupTitle
+                width: parent.width
+                text: columnRoot.name.toUpperCase()
+                color: root.foreground
+                opacity: 0.5
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.caption
+                font.bold: true
+                font.letterSpacing: 1.1
+              }
 
-                    width: columnRoot.width
-                    height: root.rowHeight
+              Flickable {
+                id: itemFlick
+                anchors.top: groupTitle.bottom
+                anchors.topMargin: Style.spacing.sm
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                contentWidth: width
+                contentHeight: itemColumn.implicitHeight
+                clip: true
+                boundsBehavior: Flickable.StopAtBounds
+                flickableDirection: Flickable.VerticalFlick
+                interactive: contentHeight > height
+                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
 
-                    Rectangle {
-                      anchors.fill: parent
-                      radius: Math.max(4, root.cornerRadius - 4)
-                      color: rowRoot.hasCursor ? root.selectedBackground : "transparent"
+                Column {
+                  id: itemColumn
+                  width: itemFlick.width
+                  spacing: Style.spacing.sm
 
-                      Row {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        anchors.leftMargin: Style.space(4)
-                        anchors.rightMargin: Style.space(4)
-                        spacing: Style.spacing.md
+                  Repeater {
+                    model: columnRoot.items
+
+                    delegate: Item {
+                      id: rowRoot
+                      required property var modelData
+                      required property int index
+                      readonly property int flatIndex: columnRoot.startIndex + index
+                      readonly property bool hasCursor: root.cursorActive && rowRoot.flatIndex === root.selectedIndex
+                      readonly property var parts: Model.keyParts(modelData.keys)
+
+                      width: itemColumn.width
+                      height: root.rowHeight
+
+                      Rectangle {
+                        anchors.fill: parent
+                        radius: Math.max(4, root.cornerRadius - 4)
+                        color: rowRoot.hasCursor ? root.selectedBackground : "transparent"
 
                         Row {
-                          id: keysRow
-                          spacing: Style.space(4)
+                          anchors.left: parent.left
+                          anchors.right: parent.right
                           anchors.verticalCenter: parent.verticalCenter
+                          anchors.leftMargin: Style.space(4)
+                          anchors.rightMargin: Style.space(4)
+                          spacing: Style.spacing.md
 
-                          Repeater {
-                            model: rowRoot.parts
-                            delegate: Rectangle {
-                              required property string modelData
-                              width: Math.max(Style.space(18), keyLabel.implicitWidth + Style.space(10))
-                              height: Math.max(Style.space(18), Style.font.bodySmall + Style.space(6))
-                              radius: 4
-                              color: Util.alpha(root.foreground, 0.08)
-                              border.width: 1
-                              border.color: Util.alpha(root.foreground, 0.2)
+                          Row {
+                            id: keysRow
+                            spacing: Style.space(4)
+                            anchors.verticalCenter: parent.verticalCenter
 
-                              Text {
-                                id: keyLabel
-                                anchors.centerIn: parent
-                                text: modelData
-                                color: rowRoot.hasCursor ? root.selectedText : root.foreground
-                                font.family: root.fontFamily
-                                font.pixelSize: Style.font.bodySmall
+                            Repeater {
+                              model: rowRoot.parts
+                              delegate: Rectangle {
+                                required property string modelData
+                                width: Math.max(Style.space(18), keyLabel.implicitWidth + Style.space(10))
+                                height: Math.max(Style.space(18), Style.font.bodySmall + Style.space(6))
+                                radius: 4
+                                color: Util.alpha(root.foreground, 0.08)
+                                border.width: 1
+                                border.color: Util.alpha(root.foreground, 0.2)
+
+                                Text {
+                                  id: keyLabel
+                                  anchors.centerIn: parent
+                                  text: modelData
+                                  color: rowRoot.hasCursor ? root.selectedText : root.foreground
+                                  font.family: root.fontFamily
+                                  font.pixelSize: Style.font.bodySmall
+                                }
                               }
                             }
                           }
+
+                          Text {
+                            width: Math.max(10, parent.width - keysRow.width - parent.spacing)
+                            text: rowRoot.modelData.label
+                            color: rowRoot.hasCursor ? root.selectedText : root.foreground
+                            font.family: root.fontFamily
+                            font.pixelSize: Style.font.body
+                            elide: Text.ElideRight
+                            anchors.verticalCenter: parent.verticalCenter
+                          }
                         }
 
-                        Text {
-                          width: Math.max(10, parent.width - keysRow.width - parent.spacing)
-                          text: rowRoot.modelData.label
-                          color: rowRoot.hasCursor ? root.selectedText : root.foreground
-                          font.family: root.fontFamily
-                          font.pixelSize: Style.font.body
-                          elide: Text.ElideRight
-                          anchors.verticalCenter: parent.verticalCenter
+                        MouseArea {
+                          anchors.fill: parent
+                          hoverEnabled: true
+                          cursorShape: Qt.PointingHandCursor
+                          onEntered: {
+                            root.cursorActive = true
+                            root.selectedIndex = rowRoot.flatIndex
+                          }
+                          onClicked: root.runItem(rowRoot.modelData)
                         }
-                      }
-
-                      MouseArea {
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onEntered: {
-                          root.cursorActive = true
-                          root.selectedIndex = rowRoot.flatIndex
-                        }
-                        onClicked: root.runItem(rowRoot.modelData)
                       }
                     }
                   }

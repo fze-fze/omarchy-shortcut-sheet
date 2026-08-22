@@ -56,3 +56,22 @@ test("builds and filters desktop groups from live bindings", () => {
   assert.equal(filtered.length, 1)
   assert.equal(filtered[0].items[0].label, "Terminal")
 })
+
+test("ships English-only interface copy", async () => {
+  const sources = await Promise.all([
+    "Overlay.qml",
+    "Catalog.js",
+    "Model.js",
+  ].map((name) => readFile(resolve(root, name), "utf8")))
+
+  assert.equal(sources.some((source) => /\p{Script=Han}/u.test(source)), false)
+})
+
+test("keeps long shortcut groups scrollable and keyboard selection visible", async () => {
+  const source = await readFile(resolve(root, "Overlay.qml"), "utf8")
+
+  assert.match(source, /Flickable\s*{\s*id:\s*itemFlick/)
+  assert.match(source, /ScrollBar\.vertical:\s*ScrollBar/)
+  assert.match(source, /interactive:\s*contentHeight\s*>\s*height/)
+  assert.match(source, /function\s+ensureSelectionVisible\(\)/)
+})
