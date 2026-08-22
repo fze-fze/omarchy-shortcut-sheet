@@ -9,12 +9,41 @@ import subprocess
 import sys
 from pathlib import Path
 
+MAX_COMMAND_OUTPUT_BYTES = 2 * 1024 * 1024
+MAX_RECORD_BYTES = 2 * 1024 * 1024
+MAX_RECORD_ROWS = 4096
+MAX_KEY_CHARS = 256
+MAX_LABEL_CHARS = 512
+MAX_DISPATCHER_CHARS = 64
+MAX_ARG_CHARS = 4096
+MAX_CLASS_CHARS = 256
+MAX_TITLE_CHARS = 1024
+MAX_ADDRESS_CHARS = 128
+MAX_TAGS = 64
+MAX_TAG_CHARS = 256
+ALLOWED_DISPATCHERS = {"", "exec", "lua", "sendshortcut"}
 
-def run(cmd: list[str]) -> str:
+
+def run(cmd: list[str], max_bytes: int = MAX_COMMAND_OUTPUT_BYTES) -> str:
     try:
-        return subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL)
-    except (subprocess.CalledProcessError, FileNotFoundError):
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        assert proc.stdout is not None
+        output = proc.stdout.read(max_bytes + 1)
+        if len(output) > max_bytes:
+            proc.kill()
+            proc.communicate()
+            return ""
+        return_code = proc.wait()
+        if return_code != 0:
+            return ""
+        return output.decode("utf-8", errors="replace")
+    except (OSError, subprocess.SubprocessError):
         return ""
+
+
+def bounded(value: object, limit: int) -> str:
+    text = str(value or "")
+    return text if len(text) <= limit else text[:limit]
 
 
 def active_window() -> dict:
@@ -27,12 +56,14 @@ def active_window() -> dict:
         return {}
     if not isinstance(data, dict):
         return {}
+    raw_tags = data.get("tags")
+    tags = raw_tags if isinstance(raw_tags, list) else []
     return {
-        "class": str(data.get("class") or ""),
-        "initialClass": str(data.get("initialClass") or ""),
-        "title": str(data.get("title") or ""),
-        "address": str(data.get("address") or ""),
-        "tags": [str(tag) for tag in (data.get("tags") or [])],
+        "class": bounded(data.get("class"), MAX_CLASS_CHARS),
+        "initialClass": bounded(data.get("initialClass"), MAX_CLASS_CHARS),
+        "title": bounded(data.get("title"), MAX_TITLE_CHARS),
+        "address": bounded(data.get("address"), MAX_ADDRESS_CHARS),
+        "tags": [bounded(tag, MAX_TAG_CHARS) for tag in tags[:MAX_TAGS]],
     }
 
 
@@ -41,10 +72,10 @@ def cache_dir() -> Path:
 
 
 def newest_records() -> Path | None:
-    files = list(cache_dir().glob("keybindings-*.records"))
-    if not files:
+    try:
+        return max(cache_dir().glob("keybindings-*.records"), key=lambda path: path.stat().st_mtime, default=None)
+    except OSError:
         return None
-    return max(files, key=lambda path: path.stat().st_mtime)
 
 
 def ensure_records() -> Path | None:
@@ -59,11 +90,15 @@ def ensure_records() -> Path | None:
 def parse_records(path: Path) -> list[dict]:
     binds: list[dict] = []
     try:
+        if path.stat().st_size > MAX_RECORD_BYTES:
+            return binds
         text = path.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return binds
 
-    for line in text.splitlines():
+    for line_number, line in enumerate(text.splitlines()):
+        if line_number >= MAX_RECORD_ROWS:
+            break
         if not line.strip():
             continue
         fields = line.split("\t")
@@ -75,7 +110,15 @@ def parse_records(path: Path) -> list[dict]:
         keys, label = display.split(" → ", 1)
         keys = " ".join(keys.split())
         label = label.strip()
-        if not keys or not label:
+        if (
+            not keys
+            or not label
+            or len(keys) > MAX_KEY_CHARS
+            or len(label) > MAX_LABEL_CHARS
+            or len(dispatcher) > MAX_DISPATCHER_CHARS
+            or len(arg) > MAX_ARG_CHARS
+            or dispatcher not in ALLOWED_DISPATCHERS
+        ):
             continue
         binds.append(
             {

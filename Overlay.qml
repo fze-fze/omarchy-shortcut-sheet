@@ -333,6 +333,7 @@ Item {
             anchors.right: parent.right
             anchors.top: parent.top
             text: root.headerTitle
+            textFormat: Text.PlainText
             color: root.foreground
             font.family: root.fontFamily
             font.pixelSize: Style.font.heading
@@ -346,6 +347,7 @@ Item {
             anchors.top: titleLabel.bottom
             anchors.topMargin: Style.space(2)
             text: root.headerHint
+            textFormat: Text.PlainText
             color: root.foreground
             opacity: 0.58
             font.family: root.fontFamily
@@ -424,6 +426,7 @@ Item {
                 id: groupTitle
                 width: parent.width
                 text: columnRoot.name.toUpperCase()
+                textFormat: Text.PlainText
                 color: root.foreground
                 opacity: 0.5
                 font.family: root.fontFamily
@@ -490,6 +493,7 @@ Item {
                                   id: keyLabel
                                   anchors.centerIn: parent
                                   text: modelData
+                                  textFormat: Text.PlainText
                                   color: rowRoot.hasCursor ? root.selectedText : root.foreground
                                   font.family: root.fontFamily
                                   font.pixelSize: Style.font.bodySmall
@@ -501,6 +505,7 @@ Item {
                           Text {
                             width: Math.max(10, parent.width - keysRow.width - parent.spacing)
                             text: rowRoot.modelData.label
+                            textFormat: Text.PlainText
                             color: rowRoot.hasCursor ? root.selectedText : root.foreground
                             font.family: root.fontFamily
                             font.pixelSize: Style.font.body
@@ -552,6 +557,7 @@ Item {
           anchors.bottom: parent.bottom
           height: root.footerHeight
           text: root.footerText
+          textFormat: Text.PlainText
           color: root.foreground
           opacity: 0.9
           font.family: root.fontFamily

@@ -90,6 +90,7 @@ installing any third-party plugin.
 ```sh
 omarchy plugin validate .
 node --test tests/model.test.mjs
+python3 -m unittest tests/test_collect.py
 python3 -m py_compile collect
 bash -n run
 ```

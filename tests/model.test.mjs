@@ -99,3 +99,20 @@ test("keeps long shortcut groups scrollable and keyboard selection visible", asy
   assert.match(source, /positionViewAtIndex\(localIndex,\s*ListView\.Contain\)/)
   assert.match(source, /function\s+ensureSelectionVisible\(\)/)
 })
+
+test("bounds collected records and renders all QML text as plain text", async () => {
+  const [collector, overlay] = await Promise.all([
+    readFile(resolve(root, "collect"), "utf8"),
+    readFile(resolve(root, "Overlay.qml"), "utf8"),
+  ])
+
+  assert.match(collector, /MAX_RECORD_BYTES\s*=/)
+  assert.match(collector, /MAX_RECORD_ROWS\s*=/)
+  assert.match(collector, /MAX_LABEL_CHARS\s*=/)
+  assert.match(collector, /ALLOWED_DISPATCHERS\s*=/)
+  assert.match(collector, /path\.stat\(\)\.st_size\s*>\s*MAX_RECORD_BYTES/)
+
+  const textElements = overlay.match(/\bText\s*{/g) || []
+  const plainTextFormats = overlay.match(/textFormat:\s*Text\.PlainText/g) || []
+  assert.equal(plainTextFormats.length, textElements.length)
+})
