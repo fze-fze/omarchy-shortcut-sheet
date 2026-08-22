@@ -194,6 +194,18 @@ test("uses Omarchy controls for persistent view settings", async () => {
   assert.match(source, /id:\s*groupsSection/)
 })
 
+test("moves keyboard focus from the rightmost column to the settings button", async () => {
+  const source = await readFile(resolve(root, "Overlay.qml"), "utf8")
+
+  assert.match(source, /property bool settingsButtonActive:\s*false/)
+  assert.match(source, /Model\.selectionPosition\(/)
+  assert.match(source, /position\.groupIndex\s*===\s*root\.visibleGroups\.length\s*-\s*1/)
+  assert.match(source, /root\.settingsButtonActive\s*=\s*true[\s\S]*?root\.cursorActive\s*=\s*false/)
+  assert.match(source, /if \(root\.settingsButtonActive\) root\.settingsOpen = true/)
+  assert.match(source, /hasCursor:\s*root\.settingsOpen\s*\|\|\s*root\.settingsButtonActive/)
+  assert.match(source, /if \(columnDelta < 0\)[\s\S]*?root\.settingsButtonActive = false[\s\S]*?root\.cursorActive = true/)
+})
+
 test("defaults to a stable compact three-column panel while filtering", async () => {
   const source = await readFile(resolve(root, "Overlay.qml"), "utf8")
   const widthLine = source.match(/property int cardWidth:[^\n]+/)?.[0] || ""

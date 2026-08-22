@@ -22,6 +22,7 @@ Item {
   property bool cursorActive: false
   property bool keyboardNavigationActive: false
   property bool settingsOpen: false
+  property bool settingsButtonActive: false
   property int columnCount: 3
   readonly property var desktopGroupNames: ["Window", "Launch", "System", "Workspace", "Hardware", "Other"]
   property var desktopGroupVisibility: ({
@@ -80,6 +81,7 @@ Item {
     root.cursorActive = false
     root.keyboardNavigationActive = false
     root.settingsOpen = false
+    root.settingsButtonActive = false
     root.keyFocus = WlrKeyboardFocus.Exclusive
     root.loadPreferences()
     root.refresh()
@@ -133,6 +135,7 @@ Item {
     root.filterText = nextFilter
     root.selectedIndex = 0
     root.cursorActive = true
+    root.settingsButtonActive = false
     root.rebuildVisible()
   }
 
@@ -198,6 +201,29 @@ Item {
   function selectMove(columnDelta, rowDelta) {
     if (root.flatItems.length === 0) return
     root.keyboardNavigationActive = true
+
+    if (root.settingsButtonActive) {
+      if (columnDelta < 0) {
+        root.settingsButtonActive = false
+        root.cursorActive = true
+        root.selectionRevision += 1
+      }
+      return
+    }
+
+    if (columnDelta > 0) {
+      var position = Model.selectionPosition(
+        root.visibleGroups,
+        root.cursorActive ? root.selectedIndex : 0
+      )
+      if (position.groupIndex === root.visibleGroups.length - 1) {
+        root.settingsButtonActive = true
+        root.cursorActive = false
+        return
+      }
+    }
+
+    root.settingsButtonActive = false
     root.selectedIndex = Model.selectionAfterMove(
       root.visibleGroups,
       root.selectedIndex,
@@ -333,7 +359,10 @@ Item {
         Keys.priority: Keys.BeforeItem
         Keys.onPressed: function(event) {
           if (event.key === Qt.Key_Escape) {
-            if (root.settingsOpen) root.settingsOpen = false
+            if (root.settingsOpen) {
+              root.settingsOpen = false
+              root.settingsButtonActive = true
+            }
             else if (root.filterText) root.setFilter("")
             else root.dismiss()
             event.accepted = true
@@ -364,7 +393,8 @@ Item {
             return
           }
           if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-            if (root.cursorActive) root.runIndex(root.selectedIndex)
+            if (root.settingsButtonActive) root.settingsOpen = true
+            else if (root.cursorActive) root.runIndex(root.selectedIndex)
             else if (root.flatItems.length > 0) {
               root.cursorActive = true
               root.selectedIndex = 0
@@ -400,7 +430,10 @@ Item {
         anchors.fill: parent
         visible: root.settingsOpen
         z: 50
-        onClicked: root.settingsOpen = false
+        onClicked: {
+          root.settingsOpen = false
+          root.settingsButtonActive = false
+        }
         onWheel: function(wheel) { wheel.accepted = true }
       }
 
@@ -418,8 +451,11 @@ Item {
         fontSize: Style.font.subtitle
         size: root.headerHeight
         bordered: true
-        hasCursor: root.settingsOpen
-        onClicked: root.settingsOpen = !root.settingsOpen
+        hasCursor: root.settingsOpen || root.settingsButtonActive
+        onClicked: {
+          root.settingsButtonActive = false
+          root.settingsOpen = !root.settingsOpen
+        }
       }
 
       BorderSurface {
@@ -772,11 +808,13 @@ Item {
                           cursorShape: Qt.PointingHandCursor
                           onEntered: {
                             if (root.keyboardNavigationActive) return
+                            root.settingsButtonActive = false
                             root.cursorActive = true
                             root.selectedIndex = rowRoot.flatIndex
                           }
                           onPressed: {
                             root.keyboardNavigationActive = false
+                            root.settingsButtonActive = false
                             root.cursorActive = true
                             root.selectedIndex = rowRoot.flatIndex
                           }
