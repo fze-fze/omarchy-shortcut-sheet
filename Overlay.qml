@@ -48,7 +48,7 @@ Item {
   property int headerHeight: Math.max(Style.space(42), Style.font.heading + Style.font.caption + Style.spacing.md)
   property int footerHeight: Math.max(Style.space(24), Style.font.body + Style.spacing.sm)
   property int footerBlockHeight: 1 + Style.spacing.sm + footerHeight
-  property string footerText: "← → categories  ·  ↑ ↓ shortcuts  ·  Tap Super to open  ·  Esc to close"
+  property string footerText: "← → categories  ·  ↑ ↓ shortcuts  ·  Type to search  ·  Esc to close"
   property int contentSpacing: Style.spacing.lg
   property int columnGap: Style.spacing.xxl
   property int columnWidth: Style.space(280)

@@ -194,6 +194,8 @@ test("defaults to a stable compact three-column panel while filtering", async ()
   assert.doesNotMatch(widthLine, /visibleGroups|groupModel|groupCount|filterText/)
   assert.match(heightLine, /panel\.height\s*\*\s*0\.72/)
   assert.doesNotMatch(heightLine, /visibleGroups|groupModel|maxRows|filterText/)
+  assert.match(source, /Type to search/)
+  assert.doesNotMatch(source, /Tap Super to open/)
 })
 
 test("bounds collected records and renders all QML text as plain text", async () => {
