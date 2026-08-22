@@ -181,6 +181,13 @@ test("uses Omarchy controls for persistent view settings", async () => {
   assert.match(source, /columnCount:\s*root\.columnCount/)
   assert.match(source, /updateEntryInline\(root\.selfId/)
   assert.match(source, /Model\.applyGroupVisibility/)
+  assert.match(source, /Style\.space\(384\)/)
+  assert.match(source, /text:\s*"Current app and page shortcuts always stay visible\."[\s\S]*?wrapMode:\s*Text\.NoWrap/)
+  assert.match(source, /visible:\s*root\.settingsOpen[\s\S]*?onWheel:\s*function\(wheel\)\s*{\s*wheel\.accepted\s*=\s*true\s*}/)
+  assert.match(source, /id:\s*groupFlick[\s\S]*?enabled:\s*!root\.settingsOpen/)
+  assert.match(source, /interactive:\s*enabled\s*&&\s*contentWidth\s*>\s*width/)
+  assert.match(source, /interactive:\s*enabled\s*&&\s*contentHeight\s*>\s*height/)
+  assert.equal((source.match(/onEnabledChanged:\s*if\s*\(!enabled\)\s*cancelFlick\(\)/g) || []).length, 2)
 })
 
 test("defaults to a stable compact three-column panel while filtering", async () => {

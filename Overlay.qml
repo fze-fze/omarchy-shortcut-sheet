@@ -401,6 +401,7 @@ Item {
         visible: root.settingsOpen
         z: 50
         onClicked: root.settingsOpen = false
+        onWheel: function(wheel) { wheel.accepted = true }
       }
 
       PanelActionButton {
@@ -426,7 +427,7 @@ Item {
         anchors.top: settingsButton.bottom
         anchors.right: settingsButton.right
         anchors.topMargin: Style.spacing.sm
-        width: Math.min(card.width - root.contentMargin * 2, Style.space(320))
+        width: Math.min(card.width - root.contentMargin * 2, Style.space(384))
         height: Math.min(
           settingsContent.implicitHeight + contentTopInset + contentBottomInset,
           card.height - y - card.contentBottomInset
@@ -484,7 +485,7 @@ Item {
               opacity: 0.58
               font.family: root.fontFamily
               font.pixelSize: Style.font.caption
-              wrapMode: Text.WordWrap
+              wrapMode: Text.NoWrap
             }
 
             Text {
@@ -592,7 +593,9 @@ Item {
           contentHeight: height
           boundsBehavior: Flickable.StopAtBounds
           flickableDirection: Flickable.HorizontalFlick
-          interactive: contentWidth > width
+          enabled: !root.settingsOpen
+          interactive: enabled && contentWidth > width
+          onEnabledChanged: if (!enabled) cancelFlick()
           ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AsNeeded }
 
           Row {
@@ -674,7 +677,8 @@ Item {
                 anchors.bottom: parent.bottom
                 clip: true
                 boundsBehavior: Flickable.StopAtBounds
-                interactive: contentHeight > height
+                interactive: enabled && contentHeight > height
+                onEnabledChanged: if (!enabled) cancelFlick()
                 model: columnRoot.items
                 spacing: Style.spacing.sm
                 ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
