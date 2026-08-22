@@ -744,11 +744,15 @@ Item {
                       readonly property int flatIndex: columnRoot.startIndex + index
                       readonly property bool hasCursor: root.cursorActive && rowRoot.flatIndex === root.selectedIndex
                       readonly property var parts: Model.keyParts(modelData.keys)
+                      readonly property bool labelTruncated: shortcutLabel.truncated
+                        || shortcutLabel.implicitWidth > shortcutLabel.width + 1
 
                       width: itemList.width
                       height: root.rowHeight
+                      z: rowRoot.labelTruncated && rowMouse.containsMouse ? 100 : 0
 
                       Rectangle {
+                        id: rowSurface
                         anchors.fill: parent
                         radius: Math.max(4, root.cornerRadius - 4)
                         color: rowRoot.hasCursor ? root.selectedBackground : "transparent"
@@ -791,6 +795,7 @@ Item {
                           }
 
                           Text {
+                            id: shortcutLabel
                             width: Math.max(10, parent.width - keysRow.width - parent.spacing)
                             text: rowRoot.modelData.label
                             textFormat: Text.PlainText
@@ -803,6 +808,7 @@ Item {
                         }
 
                         MouseArea {
+                          id: rowMouse
                           anchors.fill: parent
                           hoverEnabled: true
                           cursorShape: Qt.PointingHandCursor
@@ -819,6 +825,36 @@ Item {
                             root.selectedIndex = rowRoot.flatIndex
                           }
                           onClicked: root.runItem(rowRoot.modelData)
+                        }
+
+                        Rectangle {
+                          id: expandedShortcut
+                          readonly property bool openUpwards: rowRoot.y + height > itemList.contentY + itemList.height
+                          anchors.left: parent.left
+                          anchors.right: parent.right
+                          y: openUpwards ? parent.height - height : 0
+                          height: Math.max(root.rowHeight, expandedShortcutText.implicitHeight + Style.spacing.md * 2)
+                          z: 10
+                          visible: rowRoot.labelTruncated && rowMouse.containsMouse && !root.settingsOpen
+                          radius: Math.max(4, root.cornerRadius - 4)
+                          color: "#111111"
+                          border.width: 1
+                          border.color: "#4a4a4a"
+
+                          Text {
+                            id: expandedShortcutText
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.leftMargin: Style.spacing.md
+                            anchors.rightMargin: Style.spacing.md
+                            text: String(rowRoot.modelData.keys || "") + "  " + String(rowRoot.modelData.label || "")
+                            textFormat: Text.PlainText
+                            color: "#f2f2f2"
+                            font.family: root.fontFamily
+                            font.pixelSize: Style.font.body
+                            wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+                          }
                         }
                       }
                 }
