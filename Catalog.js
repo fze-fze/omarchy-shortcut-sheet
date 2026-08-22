@@ -95,6 +95,7 @@ function sendArg(keys) {
     "-": "minus",
     "=": "equal",
     "/": "slash",
+    "`": "grave",
     "[": "bracketleft",
     "]": "bracketright"
   }
@@ -106,6 +107,7 @@ function canSend(keys) {
   var text = String(keys || "")
   if (text.indexOf("then") !== -1) return false
   if (text.indexOf(" / ") !== -1) return false
+  if (text.indexOf("Mouse ") === 0) return false
   if (text.indexOf(":") !== -1) return false
   return true
 }
@@ -234,13 +236,87 @@ function xShortcuts() {
   ]
 }
 
-function chatgptShortcuts() {
+function chatgptWebShortcuts() {
   return [
     item("Enter", "Send"),
     item("Shift + Enter", "New line"),
     item("Ctrl + Shift + ;", "Copy last response"),
     item("Ctrl + Shift + O", "New chat"),
     item("Ctrl + Shift + S", "Toggle sidebar")
+  ]
+}
+
+// Linux defaults shipped by the ChatGPT/Codex desktop app. Keep these
+// separate from chatgpt.com because the desktop shell owns most of them.
+function chatgptDesktopShortcuts() {
+  return [
+    item("Enter", "Send"),
+    item("Shift + Enter", "New line"),
+    item("Ctrl + B", "Toggle sidebar"),
+    item("Ctrl + J", "Toggle bottom panel"),
+    item("Ctrl + `", "Toggle terminal"),
+    item("Ctrl + T", "Open browser tab"),
+    item("Ctrl + Shift + B", "Toggle browser panel"),
+    item("Ctrl + Alt + B", "Toggle review panel"),
+    item("Ctrl + Shift + G", "Open review tab"),
+    item("Ctrl + K", "Command menu"),
+    item("Ctrl + Shift + P", "Command menu"),
+    item("Ctrl + /", "Keyboard shortcuts"),
+    item("Ctrl + ,", "Settings"),
+    item("Ctrl + N", "New chat"),
+    item("Ctrl + Shift + O", "New chat"),
+    item("Ctrl + Shift + N", "New temporary chat"),
+    item("Ctrl + Alt + N", "Quick chat"),
+    item("Ctrl + Alt + O", "New standalone chat"),
+    item("Ctrl + Alt + Shift + O", "Open project picker"),
+    item("Ctrl + O", "Open folder"),
+    item("Ctrl + P", "Search files"),
+    item("Ctrl + F", "Find in thread"),
+    item("Ctrl + L", "Focus address bar / go to line"),
+    item("Ctrl + Shift + E", "Toggle file tree"),
+    item("Ctrl + Alt + S", "Open side chat"),
+    item("Ctrl + Shift + A", "Archive chat"),
+    item("Ctrl + Shift + U", "Mark chat unread"),
+    item("Ctrl + Alt + P", "Pin / unpin chat"),
+    item("Ctrl + Alt + R", "Rename chat"),
+    item("Ctrl + Alt + U", "Toggle priority filter"),
+    item("Ctrl + Alt + A", "Next chat needing attention"),
+    item("Ctrl + Tab", "Next recent chat"),
+    item("Ctrl + Shift + Tab", "Previous recent chat"),
+    item("Ctrl + Shift + ]", "Next tab / chat"),
+    item("Ctrl + Shift + [", "Previous tab / chat"),
+    item("Ctrl + 1", "Open chat 1"),
+    item("Ctrl + 2", "Open chat 2"),
+    item("Ctrl + 3", "Open chat 3"),
+    item("Ctrl + 4", "Open chat 4"),
+    item("Ctrl + 5", "Open chat 5"),
+    item("Ctrl + 6", "Open chat 6"),
+    item("Ctrl + 7", "Open chat 7"),
+    item("Ctrl + 8", "Open chat 8"),
+    item("Ctrl + 9", "Open chat 9"),
+    item("Ctrl + [", "Back"),
+    item("Ctrl + ]", "Forward"),
+    item("Mouse Back", "Back"),
+    item("Alt + ←", "Browser back"),
+    item("Alt + →", "Browser forward"),
+    item("Ctrl + W", "Close tab / window"),
+    item("Ctrl + R", "Reload browser page"),
+    item("Ctrl + Shift + R", "Force reload browser page"),
+    item("Ctrl + Z", "Undo"),
+    item("Ctrl + Y", "Redo"),
+    item("Ctrl + Shift + Z", "Redo"),
+    item("Ctrl + Shift + M", "Model picker"),
+    item("Ctrl + Shift + V", "Voice mode"),
+    item("Ctrl + Shift + D", "Dictation"),
+    item("Shift + Esc", "Clear unread indicators"),
+    item("Ctrl + Shift + C", "Copy working directory"),
+    item("Ctrl + Alt + C", "Copy session ID"),
+    item("Ctrl + Alt + L", "Copy deeplink"),
+    item("Ctrl + Alt + Shift + C", "Copy conversation path"),
+    item("Ctrl + Shift + S", "Toggle trace recording"),
+    item("Alt + 3", "Switch to Codex"),
+    item("Alt + D", "Toggle debug modal"),
+    item("Esc", "Decline approval")
   ]
 }
 
@@ -357,10 +433,12 @@ function matchPage(win) {
     return { name: "YouTube", shortcuts: youtubeShortcuts() }
   if (host === "x.com" || host.indexOf("twitter.com") !== -1)
     return { name: "X", shortcuts: xShortcuts() }
+  if (/^(chatgpt|com\.openai\.chatgpt)$/.test(cls))
+    return { name: "ChatGPT", shortcuts: chatgptDesktopShortcuts() }
   if (host.indexOf("chatgpt.com") !== -1 || /chatgpt/.test(title))
-    return { name: "ChatGPT", shortcuts: chatgptShortcuts() }
+    return { name: "ChatGPT", shortcuts: chatgptWebShortcuts() }
   if (host.indexOf("grok.com") !== -1)
-    return { name: "Grok", shortcuts: chatgptShortcuts() }
+    return { name: "Grok", shortcuts: chatgptWebShortcuts() }
 
   if (/typora/.test(cls))
     return { name: "Typora", shortcuts: typoraShortcuts() }

@@ -34,6 +34,25 @@ test("recognizes browser page and app context", () => {
   assert.ok(context.page.items.some((row) => row.label === "Go to issues"))
 })
 
+test("shows the installed ChatGPT desktop shortcuts, including Ctrl+B sidebar", () => {
+  const context = Catalog.context({
+    class: "chatgpt",
+    title: "ChatGPT",
+    address: "0x456",
+    tags: [],
+  })
+
+  assert.equal(context.page.name, "ChatGPT")
+  assert.ok(context.page.items.length >= 60)
+  assert.ok(context.page.items.some((row) => row.keys === "Ctrl + B" && row.label === "Toggle sidebar"))
+  assert.equal(context.page.items.some((row) => row.keys === "Ctrl + Shift + S" && row.label === "Toggle sidebar"), false)
+  assert.equal(
+    context.page.items.find((row) => row.keys === "Ctrl + `").arg,
+    "CTRL,grave,address:0x456",
+  )
+  assert.equal(context.page.items.find((row) => row.keys === "Mouse Back").dispatcher, "")
+})
+
 test("keeps literal slash shortcuts runnable but rejects alternatives", () => {
   assert.equal(Catalog.canSend("/"), true)
   assert.equal(Catalog.canSend("Ctrl + /"), true)
