@@ -49,10 +49,11 @@ def newest_records() -> Path | None:
 
 def ensure_records() -> Path | None:
     existing = newest_records()
-    if existing and existing.stat().st_size > 0:
-        return existing
     run(["omarchy-menu-keybindings", "--print"])
-    return newest_records()
+    refreshed = newest_records()
+    if refreshed and refreshed.stat().st_size > 0:
+        return refreshed
+    return existing
 
 
 def parse_records(path: Path) -> list[dict]:

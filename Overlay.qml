@@ -18,7 +18,7 @@ Item {
   property string filterText: ""
   property int selectedIndex: 0
   property bool cursorActive: false
-  property var sheet: ({ appName: "", contextLabel: "", title: "", groups: [] })
+  property var sheet: ({ appName: "", contextLabel: "", title: "", scannedCount: 0, groups: [] })
   property var visibleGroups: []
 
   property color background: Color.menu.background
@@ -64,6 +64,7 @@ Item {
     var bits = []
     if (root.sheet.contextLabel) bits.push(root.sheet.contextLabel)
     if (root.sheet.title) bits.push(root.sheet.title)
+    if (root.sheet.scannedCount) bits.push(root.sheet.scannedCount + " live shortcuts")
     return bits.length ? bits.join("  ·  ") : "Shortcuts for this screen"
   }
 
@@ -353,20 +354,34 @@ Item {
           }
         }
 
-        Row {
+        Flickable {
+          id: groupFlick
           width: parent.width
           height: Math.max(1, cardInner.height - root.headerHeight - root.contentSpacing)
-          spacing: root.columnGap
           clip: true
+          contentWidth: groupRow.width
+          contentHeight: height
+          boundsBehavior: Flickable.StopAtBounds
+          flickableDirection: Flickable.HorizontalFlick
+          interactive: contentWidth > width
+          ScrollBar.horizontal: ScrollBar { policy: ScrollBar.AsNeeded }
 
-          Repeater {
-            model: groupModel
+          Row {
+            id: groupRow
+            readonly property int visibleColumns: Math.max(1, Math.min(4, groupModel.count))
+            readonly property int itemWidth: Math.max(1, Math.floor((groupFlick.width - root.columnGap * Math.max(0, visibleColumns - 1)) / visibleColumns))
+            width: itemWidth * groupModel.count + root.columnGap * Math.max(0, groupModel.count - 1)
+            height: groupFlick.height
+            spacing: root.columnGap
 
-            delegate: Item {
-              id: columnRoot
-              required property string name
-              required property string itemsJson
-              required property int index
+            Repeater {
+              model: groupModel
+
+              delegate: Item {
+                id: columnRoot
+                required property string name
+                required property string itemsJson
+                required property int index
 
               readonly property var items: {
                 try { return JSON.parse(columnRoot.itemsJson) } catch (e) { return [] }
@@ -379,14 +394,21 @@ Item {
                 return start
               }
 
-              function ensureSelectionVisible() {
-                if (root.selectedIndex < columnRoot.startIndex
-                    || root.selectedIndex >= columnRoot.startIndex + columnRoot.items.length)
-                  return
+                function ensureSelectionVisible() {
+                  if (root.selectedIndex < columnRoot.startIndex
+                      || root.selectedIndex >= columnRoot.startIndex + columnRoot.items.length)
+                    return
 
-                var localIndex = root.selectedIndex - columnRoot.startIndex
-                itemList.positionViewAtIndex(localIndex, ListView.Contain)
-              }
+                  var localIndex = root.selectedIndex - columnRoot.startIndex
+                  itemList.positionViewAtIndex(localIndex, ListView.Contain)
+                  if (columnRoot.x < groupFlick.contentX)
+                    groupFlick.contentX = columnRoot.x
+                  else if (columnRoot.x + columnRoot.width > groupFlick.contentX + groupFlick.width)
+                    groupFlick.contentX = Math.min(
+                      Math.max(0, groupFlick.contentWidth - groupFlick.width),
+                      columnRoot.x + columnRoot.width - groupFlick.width
+                    )
+                }
 
               Connections {
                 target: root
@@ -395,8 +417,8 @@ Item {
                 }
               }
 
-              width: Math.max(1, Math.floor((parent.width - root.columnGap * Math.max(0, groupModel.count - 1)) / Math.max(1, groupModel.count)))
-              height: parent.height
+                width: groupRow.itemWidth
+                height: groupRow.height
 
               Text {
                 id: groupTitle
@@ -499,6 +521,7 @@ Item {
                         }
                       }
                 }
+              }
               }
             }
           }

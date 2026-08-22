@@ -6,18 +6,19 @@ app or web page, alongside window, launcher, and system shortcuts.
 
 ![Shortcut Sheet preview](preview.png)
 
-The sheet reads your live Hyprland bindings, so desktop rows stay aligned with
-your configuration. It also includes curated shortcuts for terminals, browsers,
+The sheet refreshes and scans every live Hyprland binding each time it opens, so
+desktop rows stay complete and aligned with your configuration. It also includes
+curated shortcuts for terminals, browsers,
 Files, Typora, VS Code-compatible editors, Gmail, GitHub, YouTube, X, ChatGPT,
 Grok, Neovim, lazygit, QQ, and the Omarchy Agent.
 
 ## Features
 
 - Context-aware application and web-page shortcuts
-- Live window, launcher, and system shortcuts from Hyprland
+- Complete live scan of every Hyprland shortcut, including custom and media keys
 - Type-to-filter navigation
 - Keyboard and mouse selection
-- Independent scrolling for long shortcut groups
+- Independent vertical group scrolling and horizontal category scrolling
 - Theme-aware Omarchy UI
 - No network access, background daemon, or elevated privileges
 

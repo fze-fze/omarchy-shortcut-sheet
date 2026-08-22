@@ -78,43 +78,8 @@ function normalizeKeys(keys) {
   return keyParts(keys).join(" ").toUpperCase()
 }
 
-function isMouse(keys) {
-  return /MOUSE|code:\d+/i.test(String(keys || ""))
-}
-
 function isMediaKey(keys) {
   return /XF86|Caps_Lock|Num_Lock|Scroll_Lock/i.test(String(keys || ""))
-}
-
-function isSheetBind(label) {
-  return /shortcut sheet/i.test(String(label || ""))
-}
-
-function workspaceNumber(label, prefix) {
-  var match = String(label || "").match(prefix)
-  return match ? match[1] : ""
-}
-
-function collapseWorkspaces(items, labelRe, keysPattern, collapsedLabel) {
-  var numbers = {}
-  var rest = []
-  for (var i = 0; i < items.length; i++) {
-    var num = workspaceNumber(items[i].label, labelRe)
-    if (num) numbers[num] = true
-    else rest.push(items[i])
-  }
-  var count = 0
-  for (var n in numbers) count++
-  if (count >= 8) {
-    rest.unshift({
-      keys: keysPattern,
-      label: collapsedLabel,
-      kind: "desktop",
-      dispatcher: "",
-      arg: ""
-    })
-  }
-  return rest
 }
 
 function copyBind(bind, kind) {
@@ -136,77 +101,69 @@ function matchesAny(label, patterns) {
 }
 
 var WINDOW_PATTERNS = [
-  /^Close window$/,
-  /^Full screen$/,
-  /^Full width$/,
-  /floating\/tiling/i,
-  /^Toggle window split$/,
-  /^Pop window/,
-  /^Toggle scratchpad$/,
-  /^Move window to scratchpad$/,
-  /^Focus on (left|right|above|below)/i,
-  /^Swap window/,
-  /^Toggle window transparency$/,
-  /^Toggle window gaps$/,
-  /^Next workspace$/,
-  /^Previous workspace$/,
-  /^Former workspace$/,
-  /^Switch to workspace /,
-  /^Move window to workspace /,
+  /window/i,
+  /^Full (screen|width)$/,
   /^Universal (copy|paste|cut)$/,
-  /^Select all$/
+  /^Select all$/,
+  /scratchpad/i,
+  /workspace layout/i,
+  /zoom/i
 ]
 
 var LAUNCH_PATTERNS = [
-  /^Terminal$/,
-  /^Browser$/,
-  /^File manager$/,
-  /^Editor$/,
-  /^Typora$/,
-  /^Gmail$/,
-  /^GitHub$/,
-  /^Obsidian$/,
-  /^ChatGPT$/,
-  /^Grok$/,
-  /^Email$/,
-  /^Music$/,
-  /^YouTube$/,
-  /^X$/,
-  /^Passwords$/,
-  /^Omawrite$/,
-  /^Agent$/,
-  /^Docker$/,
-  /^Tmux$/,
-  /^Omarchy menu$/,
-  /^Apps menu$/
+  /^(Terminal|Browser|File manager)( \(.+\))?$/,
+  /^(Editor|Typora|Gmail|GitHub|Obsidian|ChatGPT|Grok|Email|New email)$/,
+  /^(Music|Music TUI|YouTube|X|X Post|Passwords|Omawrite|Agent|Docker|Tmux|Herdr)$/,
+  /^(Google Maps|WhatsApp|Google Messages|New blog article)$/
 ]
 
 var SYSTEM_PATTERNS = [
-  /^System menu$/,
-  /^Lock system$/,
-  /^Screenshot$/,
-  /^Screenrecording$/,
-  /^Clipboard manager$/,
-  /^Emojis$/,
-  /^Color picker$/,
-  /^Keybindings$/,
-  /^Theme menu$/,
-  /^Toggle nightlight$/,
-  /^Toggle top bar$/,
-  /^Capture menu$/,
-  /^Notifications?$/i
+  /menu/i,
+  /lock/i,
+  /notification/i,
+  /screenshot|screenrecord|capture|color picker|clipboard|emojis|keybindings|OCR/i,
+  /dictation|translate|reminder|share|activity|calendar|time|weather|transcode/i,
+  /top bar|bar panel|background switcher|Omarchy Plugins/i
 ]
 
-function pickBinds(binds, patterns, limit) {
-  var out = []
-  var seen = {}
+var HARDWARE_PATTERNS = [
+  /audio|volume|microphone|media|track/i,
+  /brightness|backlight|display|monitor scaling/i,
+  /battery|bluetooth|network|power|touchpad|webcam|eject/i
+]
+
+var WORKSPACE_PATTERNS = [
+  /workspace/i,
+  /monitor/i
+]
+
+var DESKTOP_GROUP_ORDER = ["Window", "Launch", "System", "Workspace", "Hardware", "Other"]
+
+function desktopGroupName(bind) {
+  var label = String(bind.label || "")
+  if (isMediaKey(bind.keys) || matchesAny(label, HARDWARE_PATTERNS)) return "Hardware"
+  if (matchesAny(label, WORKSPACE_PATTERNS)) return "Workspace"
+  if (matchesAny(label, WINDOW_PATTERNS)) return "Window"
+  if (matchesAny(label, LAUNCH_PATTERNS)) return "Launch"
+  if (matchesAny(label, SYSTEM_PATTERNS)) return "System"
+  return "Other"
+}
+
+function desktopGroups(binds) {
+  var buckets = {}
+  for (var n = 0; n < DESKTOP_GROUP_ORDER.length; n++)
+    buckets[DESKTOP_GROUP_ORDER[n]] = []
+
   for (var i = 0; i < binds.length; i++) {
     var bind = binds[i]
-    if (!matchesAny(bind.label, patterns)) continue
-    if (seen[bind.label]) continue
-    seen[bind.label] = true
-    out.push(copyBind(bind, "desktop"))
-    if (out.length >= limit) break
+    buckets[desktopGroupName(bind)].push(copyBind(bind, "desktop"))
+  }
+
+  var out = []
+  for (var g = 0; g < DESKTOP_GROUP_ORDER.length; g++) {
+    var name = DESKTOP_GROUP_ORDER[g]
+    var entry = group(name, buckets[name])
+    if (entry) out.push(entry)
   }
   return out
 }
@@ -219,38 +176,22 @@ function group(name, items) {
 function buildGroups(payload) {
   var data = payload && payload.binds ? payload : parsePayload(payload)
   var ctx = Catalog.context(data.window || {})
-  var usable = []
   var binds = data.binds || []
-  for (var i = 0; i < binds.length; i++) {
-    var bind = binds[i]
-    if (isMouse(bind.keys) || isMediaKey(bind.keys) || isSheetBind(bind.label)) continue
-    usable.push(bind)
-  }
-
-  var windowItems = pickBinds(usable, WINDOW_PATTERNS, 20)
-  windowItems = collapseWorkspaces(windowItems, /^Switch to workspace (\d+)$/, "SUPER + 1…0", "Switch workspace")
-  windowItems = collapseWorkspaces(windowItems, /^Move window to workspace (\d+)$/, "SUPER SHIFT + 1…0", "Move window to workspace")
-
-  var launchItems = pickBinds(usable, LAUNCH_PATTERNS, 14)
-  var systemItems = pickBinds(usable, SYSTEM_PATTERNS, 12)
 
   var groups = []
   if (ctx.page) groups.push(group(ctx.page.name, ctx.page.items))
   if (ctx.app) groups.push(group(ctx.app.name, ctx.app.items))
-  groups.push(group("Window", windowItems))
-  groups.push(group("Launch", launchItems))
-  if (groups.length < 4) groups.push(group("System", systemItems))
+  groups = groups.concat(desktopGroups(binds))
 
   var compact = []
   for (var g = 0; g < groups.length; g++) {
     if (groups[g]) compact.push(groups[g])
   }
-  if (compact.length > 4) compact = compact.slice(0, 4)
-
   return {
     appName: ctx.page ? ctx.page.name : (ctx.app ? ctx.app.name : ctx.appName),
     contextLabel: ctx.page && ctx.appName !== ctx.page.name ? ctx.appName : "",
     title: ctx.title,
+    scannedCount: binds.length,
     groups: compact
   }
 }
