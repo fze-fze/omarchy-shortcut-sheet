@@ -174,6 +174,12 @@ function group(name, items) {
   return { name: name, items: items }
 }
 
+function confirmedToggleValue(currentValue, draftValue) {
+  var current = currentValue !== false
+  var draft = draftValue !== false
+  return draft === current ? !current : draft
+}
+
 function buildGroups(payload) {
   var data = payload && payload.binds ? payload : parsePayload(payload)
   var ctx = Catalog.context(data.window || {}, data.tui || {})

@@ -190,6 +190,13 @@ test("places detected TUI groups before generic terminal and desktop groups", ()
   ])
 })
 
+test("Enter toggles an unchanged settings switch and confirms an arrow preview", () => {
+  assert.equal(Model.confirmedToggleValue(true, true), false)
+  assert.equal(Model.confirmedToggleValue(false, false), true)
+  assert.equal(Model.confirmedToggleValue(true, false), false)
+  assert.equal(Model.confirmedToggleValue(false, true), true)
+})
+
 test("hides only desktop groups and always keeps current-context shortcuts", () => {
   const groups = [
     { name: "Window", items: [{ kind: "app", label: "Application window action" }] },
@@ -305,6 +312,7 @@ test("settings keyboard navigation previews with arrows and confirms with Enter"
   assert.match(source, /function moveSettingsCursor\(delta\)/)
   assert.match(source, /function adjustSettingsValue\(direction\)/)
   assert.match(source, /function confirmSettingsValue\(\)/)
+  assert.match(source, /Model\.confirmedToggleValue\(/)
   assert.match(source, /if \(root\.settingsOpen\)[\s\S]*?Qt\.Key_Up[\s\S]*?moveSettingsCursor\(-1\)/)
   assert.match(source, /Qt\.Key_Down[\s\S]*?moveSettingsCursor\(1\)/)
   assert.match(source, /Qt\.Key_Left[\s\S]*?adjustSettingsValue\(-1\)/)

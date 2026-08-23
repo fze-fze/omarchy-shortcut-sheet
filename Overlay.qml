@@ -310,7 +310,14 @@ Item {
       return
     }
     var name = root.desktopGroupNames[root.settingsCursorRow - 1]
-    root.setDesktopGroupVisibility(name, root.settingsDraftGroupVisibility[name] !== false)
+    var next = Model.confirmedToggleValue(
+      root.desktopGroupVisibility[name],
+      root.settingsDraftGroupVisibility[name]
+    )
+    var draft = root.copyDesktopGroupVisibility(root.settingsDraftGroupVisibility)
+    draft[name] = next
+    root.settingsDraftGroupVisibility = draft
+    root.setDesktopGroupVisibility(name, next)
   }
 
   function selectMove(columnDelta, rowDelta) {

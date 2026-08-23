@@ -68,7 +68,8 @@ open the sheet. Press <kbd>Esc</kbd> or click the dimmed background to close it.
   visible. The same menu switches between three and four columns. In this menu,
   use <kbd>Up</kbd>/<kbd>Down</kbd> to choose a setting,
   <kbd>Left</kbd>/<kbd>Right</kbd> to preview its value, and <kbd>Enter</kbd> to
-  save that value.
+  save that value. On a group switch, <kbd>Enter</kbd> by itself toggles the
+  current state.
 - Press <kbd>Esc</kbd> once to clear a filter, then again to close the sheet.
 
 ## Update
