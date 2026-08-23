@@ -10,7 +10,9 @@ The sheet refreshes and scans every live Hyprland binding each time it opens, so
 desktop rows stay complete and aligned with your configuration. It also includes
 curated shortcuts for terminals, browsers,
 Files, Typora, VS Code-compatible editors, Gmail, GitHub, YouTube, X, ChatGPT,
-Grok, Neovim, lazygit, QQ, and the Omarchy Agent.
+Grok, Neovim, lazygit, QQ, and the Omarchy Agent. When Claude Code is the
+foreground terminal program, the collector also reads that user's installed
+Claude version and `~/.claude/keybindings.json`.
 
 ## Features
 
@@ -18,6 +20,7 @@ Grok, Neovim, lazygit, QQ, and the Omarchy Agent.
 - Complete live scan of every Hyprland shortcut, including custom and media keys
 - Type-to-filter navigation
 - Keyboard and mouse selection
+- Foreground Claude Code detection with local keybinding overrides and unbinds
 - Independent vertical group scrolling and horizontal category scrolling
 - Persistent visibility controls for desktop shortcut groups
 - A persistent three- or four-column layout, with three columns by default
@@ -62,7 +65,10 @@ open the sheet. Press <kbd>Esc</kbd> or click the dimmed background to close it.
 - Press <kbd>Enter</kbd> or click a row to run it.
 - Use the gear button to show or hide Window, Launch, System, Workspace,
   Hardware, and Other groups. Current app and page shortcuts always remain
-  visible. The same menu switches between three and four columns.
+  visible. The same menu switches between three and four columns. In this menu,
+  use <kbd>Up</kbd>/<kbd>Down</kbd> to choose a setting,
+  <kbd>Left</kbd>/<kbd>Right</kbd> to preview its value, and <kbd>Enter</kbd> to
+  save that value.
 - Press <kbd>Esc</kbd> once to clear a filter, then again to close the sheet.
 
 ## Update
@@ -88,6 +94,16 @@ The plugin stores hidden-group preferences inline in Omarchy's existing
 The overlay reads the focused window from `hyprctl activewindow -j` and parses
 Omarchy's generated keybinding records. When you choose a runnable row, it asks
 Hyprland to dispatch that shortcut after the overlay releases keyboard focus.
+
+Terminal application detection is deliberately conservative. It walks only the
+focused terminal's bounded `/proc` child tree when the sheet opens. For Claude
+Code, it reads version metadata from the local install path or package file and
+reads a bounded keybindings JSON file. A built-in Claude map is used only for an
+explicitly verified client version, then the user's overrides and `null`
+unbinds are applied. Unknown versions show only bindings explicitly present in
+the user's file; the plugin does not guess maps for other detected TUI programs.
+Nothing runs in the background and no personal shortcut file is bundled in the
+plugin.
 
 Plugins run unsandboxed inside `omarchy-shell`. Review the source before
 installing any third-party plugin.

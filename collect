@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -21,7 +22,28 @@ MAX_TITLE_CHARS = 1024
 MAX_ADDRESS_CHARS = 128
 MAX_TAGS = 64
 MAX_TAG_CHARS = 256
+MAX_TUI_PROCESSES = 256
+MAX_TUI_DEPTH = 24
+MAX_TUI_CMDLINE_BYTES = 8 * 1024
+MAX_TUI_CONFIG_BYTES = 512 * 1024
+MAX_TUI_BINDINGS = 512
+MAX_TUI_CONTEXT_CHARS = 64
+MAX_TUI_KEY_CHARS = 128
+MAX_TUI_ACTION_CHARS = 128
+MAX_TUI_VERSION_CHARS = 32
 ALLOWED_DISPATCHERS = {"", "exec", "lua", "sendshortcut"}
+
+TERMINAL_CLASS_PATTERN = re.compile(
+    r"(^|[.\-])(foot|kitty|alacritty|ghostty|wezterm|com\.mitchellh\.ghostty)($|[.\-])",
+    re.IGNORECASE,
+)
+TUI_PROCESS_IDS = {
+    "claude": "claude",
+    "claude-code": "claude",
+}
+TUI_DISPLAY_NAMES = {
+    "claude": "Claude Code",
+}
 
 
 def run(cmd: list[str], max_bytes: int = MAX_COMMAND_OUTPUT_BYTES) -> str:
@@ -46,6 +68,14 @@ def bounded(value: object, limit: int) -> str:
     return text if len(text) <= limit else text[:limit]
 
 
+def bounded_pid(value: object) -> int:
+    try:
+        pid = int(value)
+    except (TypeError, ValueError):
+        return 0
+    return pid if 0 < pid <= 2**31 - 1 else 0
+
+
 def active_window() -> dict:
     raw = run(["hyprctl", "activewindow", "-j"]).strip()
     if not raw or raw.lower().startswith("invalid"):
@@ -63,8 +93,266 @@ def active_window() -> dict:
         "initialClass": bounded(data.get("initialClass"), MAX_CLASS_CHARS),
         "title": bounded(data.get("title"), MAX_TITLE_CHARS),
         "address": bounded(data.get("address"), MAX_ADDRESS_CHARS),
+        "pid": bounded_pid(data.get("pid")),
         "tags": [bounded(tag, MAX_TAG_CHARS) for tag in tags[:MAX_TAGS]],
     }
+
+
+def is_terminal_window(window: dict) -> bool:
+    tags = window.get("tags") if isinstance(window.get("tags"), list) else []
+    if any(str(tag).rstrip("*") == "terminal" for tag in tags):
+        return True
+    class_name = str(window.get("class") or window.get("initialClass") or "")
+    return bool(TERMINAL_CLASS_PATTERN.search(class_name))
+
+
+def proc_stat(path: Path) -> dict:
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace").strip()
+    except OSError:
+        return {}
+    close = text.rfind(")")
+    if close < 0:
+        return {}
+    fields = text[close + 2 :].split()
+    if len(fields) < 6:
+        return {}
+    try:
+        return {
+            "ppid": int(fields[1]),
+            "pgrp": int(fields[2]),
+            "tty": int(fields[4]),
+            "tpgid": int(fields[5]),
+        }
+    except ValueError:
+        return {}
+
+
+def proc_children(proc_root: Path, pid: int) -> list[int]:
+    path = proc_root / str(pid) / "task" / str(pid) / "children"
+    try:
+        values = path.read_text(encoding="utf-8", errors="replace").split()
+    except OSError:
+        return []
+    children: list[int] = []
+    for value in values:
+        child = bounded_pid(value)
+        if child:
+            children.append(child)
+    return children
+
+
+def proc_names(proc_root: Path, pid: int) -> list[str]:
+    names: list[str] = []
+    try:
+        comm = (proc_root / str(pid) / "comm").read_text(
+            encoding="utf-8", errors="replace"
+        ).strip()
+        if comm:
+            names.append(comm)
+    except OSError:
+        pass
+    try:
+        executable = os.readlink(proc_root / str(pid) / "exe")
+        if executable:
+            names.append(Path(executable).name)
+    except OSError:
+        pass
+    return names
+
+
+def proc_executable(proc_root: Path, pid: int) -> str:
+    try:
+        executable = os.readlink(proc_root / str(pid) / "exe")
+    except OSError:
+        return ""
+    if not executable or len(executable) > MAX_ARG_CHARS or executable.endswith(" (deleted)"):
+        return ""
+    return executable
+
+
+def proc_command(proc_root: Path, pid: int) -> list[str]:
+    try:
+        with (proc_root / str(pid) / "cmdline").open("rb") as handle:
+            raw = handle.read(MAX_TUI_CMDLINE_BYTES + 1)
+    except OSError:
+        return []
+    if not raw or len(raw) > MAX_TUI_CMDLINE_BYTES:
+        return []
+    return [
+        value.decode("utf-8", errors="replace")
+        for value in raw.rstrip(b"\0").split(b"\0")[:32]
+        if value
+    ]
+
+
+def process_tui_id(names: list[str]) -> str:
+    for name in names:
+        normalized = str(name).strip().lower()
+        if normalized in TUI_PROCESS_IDS:
+            return TUI_PROCESS_IDS[normalized]
+    return ""
+
+
+def process_tui(proc_root: Path, pid: int) -> tuple[str, str]:
+    executable = proc_executable(proc_root, pid)
+    tui_id = process_tui_id(proc_names(proc_root, pid))
+    if tui_id:
+        return tui_id, executable
+
+    command = proc_command(proc_root, pid)
+    if not command:
+        return "", ""
+    launcher = Path(command[0]).name.lower()
+    if launcher not in {"node", "nodejs", "bun", "deno"}:
+        return "", ""
+    for argument in command[1:4]:
+        normalized = argument.replace("\\", "/").lower()
+        if "/@anthropic-ai/claude-code/" in normalized:
+            return "claude", argument
+    return "", ""
+
+
+def foreground_tui(root_pid: int, proc_root: Path = Path("/proc")) -> dict:
+    if not bounded_pid(root_pid):
+        return {}
+
+    queue: list[tuple[int, int]] = [(root_pid, 0)]
+    seen: set[int] = set()
+    candidates: list[tuple[int, str, int, str]] = []
+    while queue and len(seen) < MAX_TUI_PROCESSES:
+        pid, depth = queue.pop(0)
+        if pid in seen or depth > MAX_TUI_DEPTH:
+            continue
+        seen.add(pid)
+        if pid != root_pid:
+            stat = proc_stat(proc_root / str(pid) / "stat")
+            tui_id, launch_path = process_tui(proc_root, pid)
+            is_foreground = bool(
+                stat
+                and stat.get("tty", 0) != 0
+                and stat.get("tpgid", 0) > 0
+                and stat.get("pgrp") == stat.get("tpgid")
+            )
+            if tui_id and is_foreground:
+                candidates.append((depth, tui_id, pid, launch_path))
+        for child in proc_children(proc_root, pid):
+            if child not in seen:
+                queue.append((child, depth + 1))
+
+    if not candidates:
+        return {}
+    depth, tui_id, pid, launch_path = max(candidates, key=lambda entry: entry[0])
+    return {
+        "id": tui_id,
+        "name": TUI_DISPLAY_NAMES.get(tui_id, tui_id),
+        "pid": pid,
+        "executable": launch_path,
+    }
+
+
+def title_tui(window: dict) -> dict:
+    title = str(window.get("title") or "").lower()
+    patterns = [
+        (r"\bclaude(?: code)?\b", "claude"),
+    ]
+    for pattern, tui_id in patterns:
+        if re.search(pattern, title):
+            return {"id": tui_id, "name": TUI_DISPLAY_NAMES[tui_id], "pid": 0}
+    return {}
+
+
+def claude_keybindings(path: Path | None = None) -> list[dict]:
+    config_path = path or (Path.home() / ".claude" / "keybindings.json")
+    try:
+        if config_path.stat().st_size > MAX_TUI_CONFIG_BYTES:
+            return []
+        data = json.loads(config_path.read_text(encoding="utf-8", errors="replace"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    blocks = data.get("bindings") if isinstance(data, dict) else None
+    if not isinstance(blocks, list):
+        return []
+
+    rows: list[dict] = []
+    for block in blocks:
+        if len(rows) >= MAX_TUI_BINDINGS:
+            break
+        if not isinstance(block, dict):
+            continue
+        context = block.get("context")
+        bindings = block.get("bindings")
+        if not isinstance(context, str) or not isinstance(bindings, dict):
+            continue
+        context = context.strip()
+        if not context or len(context) > MAX_TUI_CONTEXT_CHARS:
+            continue
+        for keys, action in bindings.items():
+            if len(rows) >= MAX_TUI_BINDINGS:
+                break
+            if not isinstance(keys, str):
+                continue
+            keys = keys.strip()
+            if not keys or len(keys) > MAX_TUI_KEY_CHARS or any(ord(char) < 32 for char in keys):
+                continue
+            if action is not None and (
+                not isinstance(action, str)
+                or not action.strip()
+                or len(action) > MAX_TUI_ACTION_CHARS
+            ):
+                continue
+            rows.append(
+                {
+                    "context": context,
+                    "keys": keys,
+                    "action": action.strip() if isinstance(action, str) else None,
+                }
+            )
+    return rows
+
+
+def claude_version(executable: str) -> str:
+    if not executable:
+        return ""
+    path = Path(executable)
+    if "claude" not in str(path).lower():
+        return ""
+
+    for part in reversed(path.parts):
+        if re.fullmatch(r"\d+\.\d+\.\d+", part):
+            return bounded(part, MAX_TUI_VERSION_CHARS)
+
+    for parent in list(path.parents)[:6]:
+        package_path = parent / "package.json"
+        try:
+            if package_path.stat().st_size > MAX_TUI_CONFIG_BYTES:
+                continue
+            package = json.loads(package_path.read_text(encoding="utf-8", errors="replace"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(package, dict) or package.get("name") != "@anthropic-ai/claude-code":
+            continue
+        version = str(package.get("version") or "")
+        if re.fullmatch(r"\d+\.\d+\.\d+", version):
+            return bounded(version, MAX_TUI_VERSION_CHARS)
+    return ""
+
+
+def tui_context(
+    window: dict,
+    proc_root: Path = Path("/proc"),
+    version_reader=claude_version,
+) -> dict:
+    if not is_terminal_window(window):
+        return {}
+    detected = foreground_tui(bounded_pid(window.get("pid")), proc_root) or title_tui(window)
+    if not detected:
+        return {}
+    payload = {"id": detected["id"], "name": detected["name"]}
+    if detected["id"] == "claude":
+        payload["version"] = version_reader(str(detected.get("executable") or ""))
+        payload["bindings"] = claude_keybindings()
+    return payload
 
 
 def cache_dir() -> Path:
@@ -133,8 +421,10 @@ def parse_records(path: Path) -> list[dict]:
 
 def main() -> int:
     records = ensure_records()
+    window = active_window()
     payload = {
-        "window": active_window(),
+        "window": window,
+        "tui": tui_context(window),
         "binds": parse_records(records) if records else [],
     }
     json.dump(payload, sys.stdout, ensure_ascii=False)

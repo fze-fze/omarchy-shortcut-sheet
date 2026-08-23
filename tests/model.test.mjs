@@ -34,6 +34,76 @@ test("recognizes browser page and app context", () => {
   assert.ok(context.page.items.some((row) => row.label === "Go to issues"))
 })
 
+test("builds Claude Code shortcuts from foreground TUI data and user overrides", () => {
+  const context = Catalog.context({
+    class: "com.mitchellh.ghostty",
+    title: "project",
+    address: "0xclaude",
+    tags: ["terminal"],
+  }, {
+    id: "claude",
+    name: "Claude Code",
+    version: "2.1.238",
+    bindings: [
+      { context: "Chat", keys: "ctrl+s", action: null },
+      { context: "Chat", keys: "ctrl+enter", action: "chat:submit" },
+      { context: "Transcript", keys: "x", action: "transcript:exit" },
+      { context: "Settings", keys: "x", action: "select:accept" },
+    ],
+  })
+
+  assert.equal(context.page.name, "Claude Code")
+  assert.equal(context.extraPages[0].name, "Claude Views")
+  assert.ok(context.page.items.length >= 20)
+  assert.equal(context.page.items.some((row) => row.keys === "Ctrl + S" && row.label === "Stash current prompt"), false)
+  assert.equal(
+    context.page.items.find((row) => row.keys === "Ctrl + Enter" && row.label === "Submit message").arg,
+    "CTRL,Return,address:0xclaude",
+  )
+  assert.ok(context.extraPages[0].items.some((row) => row.keys === "x" && row.label === "Transcript · Exit transcript viewer"))
+  assert.ok(context.extraPages[0].items.some((row) => row.keys === "x" && row.label === "Settings · Change selected setting"))
+  assert.ok(context.extraPages[0].items.some((row) => row.keys === "Backspace" && row.label === "Footer · Dismiss selected artifact"))
+  assert.ok(context.extraPages[0].items.some((row) => row.keys === "Ctrl + P" && row.label === "MessageSelector · Move up"))
+  assert.ok(context.extraPages[0].items.some((row) => row.keys === "Space" && row.label === "Plugin · Toggle plugin selection"))
+  assert.equal(context.app.name, "Terminal")
+})
+
+test("does not invent shortcut maps for unverified foreground TUI applications", () => {
+  const terminal = {
+    class: "com.mitchellh.ghostty",
+    title: "unrelated project title",
+    address: "0xtui",
+    tags: ["terminal"],
+  }
+
+  for (const id of ["yazi", "btop", "helix", "k9s"]) {
+    const context = Catalog.context(terminal, { id })
+    assert.equal(context.page, null)
+    assert.equal(context.app.name, "Terminal")
+  }
+})
+
+test("unknown Claude versions expose only explicit local bindings", () => {
+  const terminal = {
+    class: "com.mitchellh.ghostty",
+    title: "project",
+    address: "0xnew",
+    tags: ["terminal"],
+  }
+  const context = Catalog.context(terminal, {
+    id: "claude",
+    version: "9.9.9",
+    bindings: [
+      { context: "Chat", keys: "ctrl+e", action: "chat:externalEditor" },
+      { context: "Chat", keys: "ctrl+s", action: null },
+    ],
+  })
+
+  assert.equal(context.page.name, "Claude Code")
+  assert.deepEqual(Array.from(context.page.items, (row) => row.keys), ["Ctrl + E"])
+  assert.equal(context.extraPages.length, 0)
+})
+
 test("shows the installed ChatGPT desktop shortcuts, including Ctrl+B sidebar", () => {
   const context = Catalog.context({
     class: "chatgpt",
@@ -96,6 +166,28 @@ test("builds and filters desktop groups from live bindings", () => {
   const filtered = Model.filterGroups(sheet.groups, "terminal")
   assert.equal(filtered.length, 1)
   assert.equal(filtered[0].items[0].label, "Terminal")
+})
+
+test("places detected TUI groups before generic terminal and desktop groups", () => {
+  const sheet = Model.buildGroups({
+    window: {
+      class: "com.mitchellh.ghostty",
+      title: "project",
+      address: "0x789",
+      tags: ["terminal"],
+    },
+    tui: { id: "claude", version: "2.1.238", bindings: [] },
+    binds: [
+      { keys: "SUPER + RETURN", label: "Terminal", dispatcher: "exec", arg: "omarchy-launch-terminal" },
+    ],
+  })
+
+  assert.deepEqual(Array.from(sheet.groups, (group) => group.name).slice(0, 4), [
+    "Claude Code",
+    "Claude Views",
+    "Terminal",
+    "Launch",
+  ])
 })
 
 test("hides only desktop groups and always keeps current-context shortcuts", () => {
@@ -201,9 +293,26 @@ test("moves keyboard focus from the rightmost column to the settings button", as
   assert.match(source, /Model\.selectionPosition\(/)
   assert.match(source, /position\.groupIndex\s*===\s*root\.visibleGroups\.length\s*-\s*1/)
   assert.match(source, /root\.settingsButtonActive\s*=\s*true[\s\S]*?root\.cursorActive\s*=\s*false/)
-  assert.match(source, /if \(root\.settingsButtonActive\) root\.settingsOpen = true/)
-  assert.match(source, /hasCursor:\s*root\.settingsOpen\s*\|\|\s*root\.settingsButtonActive/)
+  assert.match(source, /if \(root\.settingsButtonActive\) root\.openSettings\(\)/)
+  assert.match(source, /hasCursor:\s*root\.settingsButtonActive/)
   assert.match(source, /if \(columnDelta < 0\)[\s\S]*?root\.settingsButtonActive = false[\s\S]*?root\.cursorActive = true/)
+})
+
+test("settings keyboard navigation previews with arrows and confirms with Enter", async () => {
+  const source = await readFile(resolve(root, "Overlay.qml"), "utf8")
+
+  assert.match(source, /property int settingsCursorRow:\s*0/)
+  assert.match(source, /function moveSettingsCursor\(delta\)/)
+  assert.match(source, /function adjustSettingsValue\(direction\)/)
+  assert.match(source, /function confirmSettingsValue\(\)/)
+  assert.match(source, /if \(root\.settingsOpen\)[\s\S]*?Qt\.Key_Up[\s\S]*?moveSettingsCursor\(-1\)/)
+  assert.match(source, /Qt\.Key_Down[\s\S]*?moveSettingsCursor\(1\)/)
+  assert.match(source, /Qt\.Key_Left[\s\S]*?adjustSettingsValue\(-1\)/)
+  assert.match(source, /Qt\.Key_Right[\s\S]*?adjustSettingsValue\(1\)/)
+  assert.match(source, /Qt\.Key_Return[\s\S]*?confirmSettingsValue\(\)/)
+  assert.match(source, /cursorIndex:\s*root\.settingsOpen\s*&&\s*root\.settingsCursorRow\s*===\s*0/)
+  assert.match(source, /hasCursor:\s*root\.settingsOpen\s*&&\s*root\.settingsCursorRow\s*===\s*index\s*\+\s*1/)
+  assert.match(source, /checked:\s*root\.settingsDraftGroupVisibility\[modelData\]\s*!==\s*false/)
 })
 
 test("shows complete truncated shortcuts in a hover overlay", async () => {

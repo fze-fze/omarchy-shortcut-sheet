@@ -159,6 +159,287 @@ function terminalShortcuts() {
   ]
 }
 
+function tuiBinding(keys, label, context, action) {
+  return {
+    keys: keys,
+    label: label,
+    context: context || "",
+    action: action || "",
+    kind: "app",
+    dispatcher: "sendshortcut",
+    arg: ""
+  }
+}
+
+// Keep built-in defaults pinned to versions whose map has been checked
+// against the installed client. Unknown versions fall back to explicit
+// ~/.claude/keybindings.json entries instead of guessing.
+function claudeDefaultBindings(version) {
+  if (String(version || "") !== "2.1.238") return []
+  return [
+    tuiBinding("Ctrl + C", "Cancel current operation", "Global", "app:interrupt"),
+    tuiBinding("Ctrl + D", "Exit Claude Code", "Global", "app:exit"),
+    tuiBinding("Ctrl + T", "Toggle task list", "Global", "app:toggleTodos"),
+    tuiBinding("Ctrl + O", "Toggle transcript viewer", "Global", "app:toggleTranscript"),
+    tuiBinding("Ctrl + R", "Search prompt history", "History", "history:search"),
+    tuiBinding("↑", "Previous history item", "History", "history:previous"),
+    tuiBinding("↓", "Next history item", "History", "history:next"),
+    tuiBinding("Esc", "Cancel current input", "Chat", "chat:cancel"),
+    tuiBinding("Ctrl + L", "Redraw screen", "Chat", "chat:clearInput"),
+    tuiBinding("Ctrl + X then Ctrl + K", "Kill background agents", "Chat", "chat:killAgents"),
+    tuiBinding("Shift + Tab", "Cycle permission modes", "Chat", "chat:cycleMode"),
+    tuiBinding("Alt + P", "Open model picker", "Chat", "chat:modelPicker"),
+    tuiBinding("Alt + O", "Toggle fast mode", "Chat", "chat:fastMode"),
+    tuiBinding("Alt + T", "Toggle extended thinking", "Chat", "chat:thinkingToggle"),
+    tuiBinding("Enter", "Submit message", "Chat", "chat:submit"),
+    tuiBinding("Ctrl + J", "Insert newline", "Chat", "chat:newline"),
+    tuiBinding("Ctrl + _", "Undo last action", "Chat", "chat:undo"),
+    tuiBinding("Ctrl + Shift + -", "Undo last action", "Chat", "chat:undo"),
+    tuiBinding("Ctrl + G", "Open external editor", "Chat", "chat:externalEditor"),
+    tuiBinding("Ctrl + X then Ctrl + E", "Open external editor", "Chat", "chat:externalEditor"),
+    tuiBinding("Ctrl + S", "Stash current prompt", "Chat", "chat:stash"),
+    tuiBinding("Ctrl + V", "Paste image", "Chat", "chat:imagePaste"),
+    tuiBinding("Ctrl + B", "Background current task", "Task", "task:background"),
+    tuiBinding("Ctrl + X then Ctrl + B", "Background current task", "Task", "task:background"),
+    tuiBinding("Ctrl + T", "Toggle syntax highlighting", "ThemePicker", "theme:toggleSyntaxHighlighting"),
+    tuiBinding("Esc", "Close help menu", "Help", "help:dismiss"),
+
+    tuiBinding("Tab", "Accept suggestion", "Autocomplete", "autocomplete:accept"),
+    tuiBinding("Esc", "Dismiss suggestions", "Autocomplete", "autocomplete:dismiss"),
+    tuiBinding("↑", "Previous suggestion", "Autocomplete", "autocomplete:previous"),
+    tuiBinding("↓", "Next suggestion", "Autocomplete", "autocomplete:next"),
+    tuiBinding("Y", "Confirm action", "Confirmation", "confirm:yes"),
+    tuiBinding("Enter", "Confirm action", "Confirmation", "confirm:yes"),
+    tuiBinding("N", "Decline action", "Confirmation", "confirm:no"),
+    tuiBinding("Esc", "Decline action", "Confirmation", "confirm:no"),
+    tuiBinding("↑", "Previous option", "Confirmation", "confirm:previous"),
+    tuiBinding("↓", "Next option", "Confirmation", "confirm:next"),
+    tuiBinding("Tab", "Next field", "Confirmation", "confirm:nextField"),
+    tuiBinding("Space", "Toggle selection", "Confirmation", "confirm:toggle"),
+    tuiBinding("Shift + Tab", "Cycle permission modes", "Confirmation", "confirm:cycleMode"),
+    tuiBinding("Ctrl + E", "Toggle command explanation", "Confirmation", "confirm:toggleExplanation"),
+    tuiBinding("Ctrl + E", "Toggle all transcript content", "Transcript", "transcript:toggleShowAll"),
+    tuiBinding("Q", "Exit transcript viewer", "Transcript", "transcript:exit"),
+    tuiBinding("Ctrl + C", "Exit transcript viewer", "Transcript", "transcript:exit"),
+    tuiBinding("Esc", "Exit transcript viewer", "Transcript", "transcript:exit"),
+    tuiBinding("Ctrl + R", "Next history match", "HistorySearch", "historySearch:next"),
+    tuiBinding("Tab", "Accept history match", "HistorySearch", "historySearch:accept"),
+    tuiBinding("Esc", "Accept history match", "HistorySearch", "historySearch:accept"),
+    tuiBinding("Ctrl + C", "Cancel history search", "HistorySearch", "historySearch:cancel"),
+    tuiBinding("Enter", "Execute history match", "HistorySearch", "historySearch:execute"),
+    tuiBinding("Ctrl + S", "Cycle history scope", "HistorySearch", "historySearch:cycleScope"),
+    tuiBinding("Tab", "Next tab", "Tabs", "tabs:next"),
+    tuiBinding("→", "Next tab", "Tabs", "tabs:next"),
+    tuiBinding("Shift + Tab", "Previous tab", "Tabs", "tabs:previous"),
+    tuiBinding("←", "Previous tab", "Tabs", "tabs:previous"),
+    tuiBinding("→", "Next attachment", "Attachments", "attachments:next"),
+    tuiBinding("←", "Previous attachment", "Attachments", "attachments:previous"),
+    tuiBinding("Backspace", "Remove attachment", "Attachments", "attachments:remove"),
+    tuiBinding("Delete", "Remove attachment", "Attachments", "attachments:remove"),
+    tuiBinding("↓", "Exit attachment navigation", "Attachments", "attachments:exit"),
+    tuiBinding("Esc", "Exit attachment navigation", "Attachments", "attachments:exit"),
+    tuiBinding("→", "Next footer item", "Footer", "footer:next"),
+    tuiBinding("←", "Previous footer item", "Footer", "footer:previous"),
+    tuiBinding("↑", "Navigate up", "Footer", "footer:up"),
+    tuiBinding("↓", "Navigate down", "Footer", "footer:down"),
+    tuiBinding("Enter", "Open selected footer item", "Footer", "footer:openSelected"),
+    tuiBinding("Esc", "Clear footer selection", "Footer", "footer:clearSelection"),
+    tuiBinding("Backspace", "Dismiss selected artifact", "Footer", "footer:dismiss"),
+    tuiBinding("Delete", "Dismiss selected artifact", "Footer", "footer:dismiss"),
+    tuiBinding("↑", "Move up", "MessageSelector", "messageSelector:up"),
+    tuiBinding("K", "Move up", "MessageSelector", "messageSelector:up"),
+    tuiBinding("Ctrl + P", "Move up", "MessageSelector", "messageSelector:up"),
+    tuiBinding("↓", "Move down", "MessageSelector", "messageSelector:down"),
+    tuiBinding("J", "Move down", "MessageSelector", "messageSelector:down"),
+    tuiBinding("Ctrl + N", "Move down", "MessageSelector", "messageSelector:down"),
+    tuiBinding("Ctrl + ↑", "Jump to top", "MessageSelector", "messageSelector:top"),
+    tuiBinding("Shift + ↑", "Jump to top", "MessageSelector", "messageSelector:top"),
+    tuiBinding("Alt + ↑", "Jump to top", "MessageSelector", "messageSelector:top"),
+    tuiBinding("Shift + K", "Jump to top", "MessageSelector", "messageSelector:top"),
+    tuiBinding("Ctrl + ↓", "Jump to bottom", "MessageSelector", "messageSelector:bottom"),
+    tuiBinding("Shift + ↓", "Jump to bottom", "MessageSelector", "messageSelector:bottom"),
+    tuiBinding("Alt + ↓", "Jump to bottom", "MessageSelector", "messageSelector:bottom"),
+    tuiBinding("Shift + J", "Jump to bottom", "MessageSelector", "messageSelector:bottom"),
+    tuiBinding("Enter", "Select message", "MessageSelector", "messageSelector:select"),
+    tuiBinding("Esc", "Close diff viewer", "DiffDialog", "diff:dismiss"),
+    tuiBinding("←", "Previous diff source", "DiffDialog", "diff:previousSource"),
+    tuiBinding("→", "Next diff source", "DiffDialog", "diff:nextSource"),
+    tuiBinding("↑", "Previous diff file", "DiffDialog", "diff:previousFile"),
+    tuiBinding("K", "Previous diff file", "DiffDialog", "diff:previousFile"),
+    tuiBinding("↓", "Next diff file", "DiffDialog", "diff:nextFile"),
+    tuiBinding("J", "Next diff file", "DiffDialog", "diff:nextFile"),
+    tuiBinding("Enter", "View diff details", "DiffDialog", "diff:viewDetails"),
+    tuiBinding("PageUp", "Scroll up half a page", "DiffDialog", "scroll:pageUp"),
+    tuiBinding("PageDown", "Scroll down half a page", "DiffDialog", "scroll:pageDown"),
+    tuiBinding("Shift + Space", "Scroll up a full page", "DiffDialog", "scroll:fullPageUp"),
+    tuiBinding("B", "Scroll up a full page", "DiffDialog", "scroll:fullPageUp"),
+    tuiBinding("Space", "Scroll down a full page", "DiffDialog", "scroll:fullPageDown"),
+    tuiBinding("G", "Jump to diff top", "DiffDialog", "scroll:top"),
+    tuiBinding("Home", "Jump to diff top", "DiffDialog", "scroll:top"),
+    tuiBinding("Shift + G", "Jump to diff bottom", "DiffDialog", "scroll:bottom"),
+    tuiBinding("End", "Jump to diff bottom", "DiffDialog", "scroll:bottom"),
+    tuiBinding("←", "Decrease effort level", "ModelPicker", "modelPicker:decreaseEffort"),
+    tuiBinding("→", "Increase effort level", "ModelPicker", "modelPicker:increaseEffort"),
+    tuiBinding("S", "Apply to this session only", "ModelPicker", "modelPicker:thisSessionOnly"),
+    tuiBinding("↓", "Next option", "Select", "select:next"),
+    tuiBinding("J", "Next option", "Select", "select:next"),
+    tuiBinding("Ctrl + N", "Next option", "Select", "select:next"),
+    tuiBinding("↑", "Previous option", "Select", "select:previous"),
+    tuiBinding("K", "Previous option", "Select", "select:previous"),
+    tuiBinding("Ctrl + P", "Previous option", "Select", "select:previous"),
+    tuiBinding("Enter", "Accept selection", "Select", "select:accept"),
+    tuiBinding("Esc", "Cancel selection", "Select", "select:cancel"),
+    tuiBinding("Space", "Toggle plugin selection", "Plugin", "plugin:toggle"),
+    tuiBinding("I", "Install selected plugin", "Plugin", "plugin:install"),
+    tuiBinding("F", "Favorite selected plugin", "Plugin", "plugin:favorite"),
+    tuiBinding("/", "Search settings", "Settings", "settings:search"),
+    tuiBinding("R", "Retry loading", "Settings", "settings:retry"),
+    tuiBinding("Enter", "Change selected setting", "Settings", "select:accept"),
+    tuiBinding("Space", "Change selected setting", "Settings", "select:accept"),
+    tuiBinding("Esc", "Close settings", "Settings", "confirm:no"),
+    tuiBinding("PageUp", "Scroll up half a page", "Scroll", "scroll:pageUp"),
+    tuiBinding("PageDown", "Scroll down half a page", "Scroll", "scroll:pageDown"),
+    tuiBinding("Ctrl + Home", "Jump to conversation start", "Scroll", "scroll:top"),
+    tuiBinding("Ctrl + End", "Jump to conversation end", "Scroll", "scroll:bottom"),
+    tuiBinding("Ctrl + Shift + C", "Copy selected text", "Scroll", "selection:copy"),
+    tuiBinding("Shift + ←", "Extend selection left", "Scroll", "selection:extendLeft"),
+    tuiBinding("Shift + →", "Extend selection right", "Scroll", "selection:extendRight"),
+    tuiBinding("Shift + ↑", "Extend selection up", "Scroll", "selection:extendUp"),
+    tuiBinding("Shift + ↓", "Extend selection down", "Scroll", "selection:extendDown"),
+    tuiBinding("Shift + Home", "Extend selection to line start", "Scroll", "selection:extendLineStart"),
+    tuiBinding("Shift + End", "Extend selection to line end", "Scroll", "selection:extendLineEnd")
+  ]
+}
+
+function canonicalBindingKey(value) {
+  return String(value || "")
+    .replace(/\s+then\s+/gi, " ")
+    .replace(/\s*\+\s*/g, "+")
+    .replace(/\s+/g, " ")
+    .replace(/\b(control)\b/gi, "ctrl")
+    .replace(/\b(opt|option|meta)\b/gi, "alt")
+    .replace(/\b(command|cmd|win)\b/gi, "super")
+    .replace(/\b(return)\b/gi, "enter")
+    .replace(/\besc\b/gi, "escape")
+    .toLowerCase()
+    .replace(/^\s+|\s+$/g, "")
+}
+
+function displayBindingStroke(stroke) {
+  var text = String(stroke || "")
+  if (/^[A-Z]$/.test(text)) return "Shift + " + text
+  var parts = text.split("+")
+  var labels = []
+  var keyLabels = {
+    escape: "Esc", enter: "Enter", return: "Enter", tab: "Tab", space: "Space",
+    up: "↑", down: "↓", left: "←", right: "→", backspace: "Backspace",
+    delete: "Delete", pageup: "PageUp", pagedown: "PageDown", home: "Home", end: "End"
+  }
+  for (var i = 0; i < parts.length; i++) {
+    var piece = parts[i].replace(/^\s+|\s+$/g, "")
+    var lowerPiece = lower(piece)
+    if (lowerPiece === "ctrl" || lowerPiece === "control") labels.push("Ctrl")
+    else if (lowerPiece === "shift") labels.push("Shift")
+    else if (/^(alt|opt|option|meta)$/.test(lowerPiece)) labels.push("Alt")
+    else if (/^(cmd|command|super|win)$/.test(lowerPiece)) labels.push("Super")
+    else if (parts.length > 1 && /^[a-z]$/.test(piece)) labels.push(piece.toUpperCase())
+    else labels.push(keyLabels[lowerPiece] || piece)
+  }
+  return labels.join(" + ")
+}
+
+function displayBindingKeys(value) {
+  var strokes = String(value || "").replace(/^\s+|\s+$/g, "").split(/\s+/)
+  var labels = []
+  for (var i = 0; i < strokes.length; i++) {
+    var label = displayBindingStroke(strokes[i])
+    if (label) labels.push(label)
+  }
+  return labels.join(" then ")
+}
+
+function friendlyAction(action) {
+  var text = String(action || "")
+  var piece = text.indexOf(":") >= 0 ? text.split(":").pop() : text
+  piece = piece.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ")
+  if (!piece) return "Custom action"
+  return piece.charAt(0).toUpperCase() + piece.slice(1)
+}
+
+function mergedClaudeBindings(version, customBindings) {
+  var rows = claudeDefaultBindings(version)
+  var actionLabels = {}
+  for (var i = 0; i < rows.length; i++) {
+    var contextualAction = lower(rows[i].context) + "\n" + rows[i].action
+    if (!actionLabels[contextualAction]) actionLabels[contextualAction] = rows[i].label
+    if (!actionLabels[rows[i].action]) actionLabels[rows[i].action] = rows[i].label
+  }
+
+  var custom = customBindings || []
+  for (var c = 0; c < custom.length; c++) {
+    var override = custom[c] || {}
+    var context = String(override.context || "")
+    var key = canonicalBindingKey(override.keys)
+    if (!context || !key) continue
+
+    var kept = []
+    for (var r = 0; r < rows.length; r++) {
+      if (lower(rows[r].context) === lower(context)
+          && canonicalBindingKey(rows[r].keys) === key)
+        continue
+      kept.push(rows[r])
+    }
+    rows = kept
+    if (override.action === null || override.action === undefined) continue
+
+    var action = String(override.action)
+    rows.push(tuiBinding(
+      displayBindingKeys(override.keys),
+      actionLabels[lower(context) + "\n" + action] || actionLabels[action] || friendlyAction(action),
+      context,
+      action
+    ))
+  }
+  return rows
+}
+
+function lazygitShortcuts() {
+  return [
+    item("j / k", "Move"),
+    item("Enter", "Open"),
+    item("Space", "Select"),
+    item("c", "Commit"),
+    item("p", "Pull"),
+    item("P", "Push"),
+    item("q", "Quit"),
+    item("?", "Help")
+  ]
+}
+
+function matchTui(tui) {
+  var id = lower(tui && tui.id)
+  if (!id) return null
+  if (id === "claude") {
+    var merged = mergedClaudeBindings(tui.version, tui.bindings)
+    var primary = []
+    var views = []
+    for (var i = 0; i < merged.length; i++) {
+      var row = merged[i]
+      if (/^(global|chat|history|task)$/i.test(row.context)) primary.push(row)
+      else {
+        row.label = row.context + " · " + row.label
+        views.push(row)
+      }
+    }
+    return {
+      page: { name: "Claude Code", shortcuts: primary },
+      extraPages: views.length ? [{ name: "Claude Views", shortcuts: views }] : []
+    }
+  }
+
+  return null
+}
+
 function browserShortcuts() {
   return [
     item("Ctrl + T", "New tab"),
@@ -412,16 +693,7 @@ function matchPage(win) {
     return { name: "Grok", shortcuts: grokShortcuts() }
   if (isTerminal(win) && /(^|[^a-z])n?vim([^a-z]|$)|helix|lazygit/.test(title)) {
     if (/lazygit/.test(title))
-      return { name: "lazygit", shortcuts: [
-        item("j / k", "Move"),
-        item("Enter", "Open"),
-        item("Space", "Select"),
-        item("c", "Commit"),
-        item("p", "Pull"),
-        item("P", "Push"),
-        item("q", "Quit"),
-        item("?", "Help")
-      ] }
+      return { name: "lazygit", shortcuts: lazygitShortcuts() }
     return { name: "Neovim", shortcuts: nvimShortcuts() }
   }
 
@@ -468,15 +740,21 @@ function matchApp(win, pageName) {
   return null
 }
 
-function context(win) {
-  var page = matchPage(win)
+function context(win, tui) {
+  var tuiMatch = matchTui(tui || {})
+  var page = tuiMatch ? tuiMatch.page : matchPage(win)
+  var extraPages = tuiMatch ? tuiMatch.extraPages : []
   var app = matchApp(win, page ? page.name : "")
   var address = win && win.address ? String(win.address) : ""
+  var renderedExtraPages = []
+  for (var i = 0; i < extraPages.length; i++)
+    renderedExtraPages.push({ name: extraPages[i].name, items: withSend(extraPages[i].shortcuts, address) })
   return {
     appName: prettyAppName(win),
     title: String((win && win.title) || ""),
     address: address,
     page: page ? { name: page.name, items: withSend(page.shortcuts, address) } : null,
+    extraPages: renderedExtraPages,
     app: app && (!page || app.name !== page.name)
       ? { name: app.name, items: withSend(app.shortcuts, address) }
       : null

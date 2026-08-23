@@ -3,13 +3,14 @@
 function parsePayload(raw) {
   try {
     var parsed = JSON.parse(String(raw || "{}"))
-    if (!parsed || typeof parsed !== "object") return { window: {}, binds: [] }
+    if (!parsed || typeof parsed !== "object") return { window: {}, tui: {}, binds: [] }
     return {
       window: parsed.window && typeof parsed.window === "object" ? parsed.window : {},
+      tui: parsed.tui && typeof parsed.tui === "object" ? parsed.tui : {},
       binds: Array.isArray(parsed.binds) ? parsed.binds : []
     }
   } catch (e) {
-    return { window: {}, binds: [] }
+    return { window: {}, tui: {}, binds: [] }
   }
 }
 
@@ -175,11 +176,14 @@ function group(name, items) {
 
 function buildGroups(payload) {
   var data = payload && payload.binds ? payload : parsePayload(payload)
-  var ctx = Catalog.context(data.window || {})
+  var ctx = Catalog.context(data.window || {}, data.tui || {})
   var binds = data.binds || []
 
   var groups = []
   if (ctx.page) groups.push(group(ctx.page.name, ctx.page.items))
+  var extraPages = ctx.extraPages || []
+  for (var p = 0; p < extraPages.length; p++)
+    groups.push(group(extraPages[p].name, extraPages[p].items))
   if (ctx.app) groups.push(group(ctx.app.name, ctx.app.items))
   groups = groups.concat(desktopGroups(binds))
 

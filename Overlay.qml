@@ -23,6 +23,9 @@ Item {
   property bool keyboardNavigationActive: false
   property bool settingsOpen: false
   property bool settingsButtonActive: false
+  property int settingsCursorRow: 0
+  property int settingsDraftColumnCount: 3
+  property var settingsDraftGroupVisibility: ({})
   property bool shortcutHoverVisible: false
   property int shortcutHoverIndex: -1
   property real shortcutHoverX: 0
@@ -90,6 +93,7 @@ Item {
     root.keyboardNavigationActive = false
     root.settingsOpen = false
     root.settingsButtonActive = false
+    root.settingsCursorRow = 0
     root.hideShortcutHover()
     root.keyFocus = WlrKeyboardFocus.Exclusive
     root.loadPreferences()
@@ -213,14 +217,16 @@ Item {
     root.persistPreferences()
   }
 
-  function toggleDesktopGroup(name) {
+  function setDesktopGroupVisibility(name, visible) {
     if (root.desktopGroupNames.indexOf(name) === -1) return
+    var requested = visible !== false
+    if ((root.desktopGroupVisibility[name] !== false) === requested) return
     var next = ({})
     for (var i = 0; i < root.desktopGroupNames.length; i++) {
       var groupName = root.desktopGroupNames[i]
       next[groupName] = root.desktopGroupVisibility[groupName] !== false
     }
-    next[name] = !next[name]
+    next[name] = requested
     root.desktopGroupVisibility = next
     root.hideShortcutHover()
     root.selectedIndex = 0
@@ -228,6 +234,83 @@ Item {
     root.keyboardNavigationActive = false
     root.rebuildVisible()
     root.persistPreferences()
+  }
+
+  function toggleDesktopGroup(name) {
+    root.setDesktopGroupVisibility(name, root.desktopGroupVisibility[name] === false)
+  }
+
+  function copyDesktopGroupVisibility(source) {
+    var next = ({})
+    for (var i = 0; i < root.desktopGroupNames.length; i++) {
+      var name = root.desktopGroupNames[i]
+      next[name] = source[name] !== false
+    }
+    return next
+  }
+
+  function openSettings() {
+    root.settingsDraftColumnCount = root.columnCount
+    root.settingsDraftGroupVisibility = root.copyDesktopGroupVisibility(root.desktopGroupVisibility)
+    root.settingsCursorRow = 0
+    root.settingsButtonActive = false
+    root.settingsOpen = true
+    settingsFlick.contentY = 0
+  }
+
+  function closeSettings(returnToButton) {
+    root.settingsOpen = false
+    root.settingsButtonActive = returnToButton === true
+  }
+
+  function ensureSettingsCursorVisible() {
+    if (!root.settingsOpen) return
+    Qt.callLater(function() {
+      var target = root.settingsCursorRow === 0
+        ? columnsSection
+        : groupRepeater.itemAt(root.settingsCursorRow - 1)
+      if (!target) return
+      var point = target.mapToItem(settingsContent, 0, 0)
+      var top = point.y
+      var bottom = top + target.height
+      var viewTop = settingsFlick.contentY
+      var viewBottom = viewTop + settingsFlick.height
+      if (top < viewTop)
+        settingsFlick.contentY = Math.max(0, top)
+      else if (bottom > viewBottom)
+        settingsFlick.contentY = Math.min(
+          Math.max(0, settingsFlick.contentHeight - settingsFlick.height),
+          bottom - settingsFlick.height
+        )
+    })
+  }
+
+  function moveSettingsCursor(delta) {
+    root.settingsCursorRow = Math.max(
+      0,
+      Math.min(root.desktopGroupNames.length, root.settingsCursorRow + delta)
+    )
+    root.ensureSettingsCursorVisible()
+  }
+
+  function adjustSettingsValue(direction) {
+    if (root.settingsCursorRow === 0) {
+      root.settingsDraftColumnCount = direction < 0 ? 3 : 4
+      return
+    }
+    var name = root.desktopGroupNames[root.settingsCursorRow - 1]
+    var draft = root.copyDesktopGroupVisibility(root.settingsDraftGroupVisibility)
+    draft[name] = direction > 0
+    root.settingsDraftGroupVisibility = draft
+  }
+
+  function confirmSettingsValue() {
+    if (root.settingsCursorRow === 0) {
+      root.setColumnCount(root.settingsDraftColumnCount)
+      return
+    }
+    var name = root.desktopGroupNames[root.settingsCursorRow - 1]
+    root.setDesktopGroupVisibility(name, root.settingsDraftGroupVisibility[name] !== false)
   }
 
   function selectMove(columnDelta, rowDelta) {
@@ -393,8 +476,7 @@ Item {
         Keys.onPressed: function(event) {
           if (event.key === Qt.Key_Escape) {
             if (root.settingsOpen) {
-              root.settingsOpen = false
-              root.settingsButtonActive = true
+              root.closeSettings(true)
             }
             else if (root.filterText) root.setFilter("")
             else root.dismiss()
@@ -402,6 +484,12 @@ Item {
             return
           }
           if (root.settingsOpen) {
+            if (event.key === Qt.Key_Up) root.moveSettingsCursor(-1)
+            else if (event.key === Qt.Key_Down) root.moveSettingsCursor(1)
+            else if (event.key === Qt.Key_Left) root.adjustSettingsValue(-1)
+            else if (event.key === Qt.Key_Right) root.adjustSettingsValue(1)
+            else if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+              root.confirmSettingsValue()
             event.accepted = true
             return
           }
@@ -426,7 +514,7 @@ Item {
             return
           }
           if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-            if (root.settingsButtonActive) root.settingsOpen = true
+            if (root.settingsButtonActive) root.openSettings()
             else if (root.cursorActive) root.runIndex(root.selectedIndex)
             else if (root.flatItems.length > 0) {
               root.cursorActive = true
@@ -464,8 +552,7 @@ Item {
         visible: root.settingsOpen
         z: 50
         onClicked: {
-          root.settingsOpen = false
-          root.settingsButtonActive = false
+          root.closeSettings(false)
         }
         onWheel: function(wheel) { wheel.accepted = true }
       }
@@ -484,10 +571,10 @@ Item {
         fontSize: Style.font.subtitle
         size: root.headerHeight
         bordered: true
-        hasCursor: root.settingsOpen || root.settingsButtonActive
+        hasCursor: root.settingsButtonActive
         onClicked: {
-          root.settingsButtonActive = false
-          root.settingsOpen = !root.settingsOpen
+          if (root.settingsOpen) root.closeSettings(false)
+          else root.openSettings()
         }
       }
 
@@ -579,13 +666,26 @@ Item {
               }
 
               Ui.ButtonGroup {
+                id: columnButtons
                 options: ["3", "4"]
-                value: String(root.columnCount)
+                value: String(root.settingsDraftColumnCount)
+                cursorIndex: root.settingsOpen && root.settingsCursorRow === 0
+                  ? (root.settingsDraftColumnCount === 4 ? 1 : 0)
+                  : -1
+                focusable: false
                 foreground: root.foreground
                 background: root.background
                 accent: Color.accent
                 fontFamily: root.fontFamily
-                onChanged: function(value) { root.setColumnCount(value) }
+                onHovered: function(index, isHovered) {
+                  if (!isHovered) return
+                  root.settingsCursorRow = 0
+                }
+                onChanged: function(value) {
+                  root.settingsCursorRow = 0
+                  root.settingsDraftColumnCount = Number(value) === 4 ? 4 : 3
+                  root.setColumnCount(root.settingsDraftColumnCount)
+                }
               }
             }
 
@@ -605,17 +705,30 @@ Item {
               }
 
               Repeater {
+                id: groupRepeater
                 model: root.desktopGroupNames
 
                 delegate: Toggle {
                   required property string modelData
+                  required property int index
                   width: groupsSection.width
                   label: modelData
-                  checked: root.desktopGroupVisibility[modelData] !== false
+                  checked: root.settingsDraftGroupVisibility[modelData] !== false
+                  hasCursor: root.settingsOpen && root.settingsCursorRow === index + 1
                   foreground: root.foreground
                   accent: Color.accent
                   fontFamily: root.fontFamily
-                  onClicked: root.toggleDesktopGroup(modelData)
+                  onHovered: function(isHovered) {
+                    if (isHovered) root.settingsCursorRow = index + 1
+                  }
+                  onClicked: {
+                    root.settingsCursorRow = index + 1
+                    var next = root.settingsDraftGroupVisibility[modelData] === false
+                    var draft = root.copyDesktopGroupVisibility(root.settingsDraftGroupVisibility)
+                    draft[modelData] = next
+                    root.settingsDraftGroupVisibility = draft
+                    root.setDesktopGroupVisibility(modelData, next)
+                  }
                 }
               }
             }
